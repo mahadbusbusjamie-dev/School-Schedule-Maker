@@ -105,6 +105,12 @@
         #printSchedule:hover {
             background-color: #303f9f;
         }
+        #createNewSchedule {
+            background-color: #ff5722;
+        }
+        #createNewSchedule:hover {
+            background-color: #e64a19;
+        }
         .dropdown {
             position: relative;
             width: 100%;
@@ -230,6 +236,31 @@
             margin-top: 20px;
             font-style: italic;
             text-align: right;
+        }
+        #loadScheduleModal .modal-content {
+            max-width: 400px;
+        }
+        #loadScheduleModal select {
+            width: 100%;
+            padding: 8px;
+            font-size: 14px;
+            margin-bottom: 10px;
+        }
+        #loadScheduleModal .modal-content button {
+            margin: 10px 5px;
+            width: 120px;
+            padding: 10px 0;
+            font-size: 14px;
+            line-height: 1.5;
+            box-sizing: border-box;
+            display: inline-block;
+            text-align: center;
+        }
+        #loadScheduleModal .modal-content button.remove-btn {
+            background-color: #f44336;
+        }
+        #loadScheduleModal .modal-content button.remove-btn:hover {
+            background-color: #da190b;
         }
         @media print {
             .sidebar, .form-container, button, h1, .dropdown, .dropdown-menu, input, .modal {
@@ -385,6 +416,19 @@
         </div>
     </div>
 
+    <!-- Load Schedule Modal -->
+    <div class="modal" id="loadScheduleModal">
+        <div class="modal-content">
+            <h2>Select a Saved Schedule</h2>
+            <select id="savedSchedulesSelect">
+                <option value="" disabled selected>No saved schedules</option>
+            </select>
+            <button id="loadSelectedSchedule">Load Schedule</button>
+            <button id="deleteSelectedSchedule" class="remove-btn">Delete Schedule</button>
+            <button id="cancelLoadSchedule">Cancel</button>
+        </div>
+    </div>
+
     <div class="sidebar">
         <h2>Controls</h2>
         <div class="form-container">
@@ -475,6 +519,7 @@
             <button id="saveSchedule">Save Schedule</button>
             <button id="editSchedule">Load Schedule</button>
             <button id="printSchedule">Print Schedule</button>
+            <button id="createNewSchedule">Create New Schedule</button>
         </div>
     </div>
     <div class="content">
@@ -757,15 +802,11 @@
                 reader.onload = function(e) {
                     schoolDetails.logo = e.target.result;
                     updateSchoolHeader();
-                    localStorage.setItem('mbjSchoolDetails', JSON.stringify(schoolDetails));
-                    alert('School details saved successfully.');
                     document.getElementById('schoolDropdownMenu').classList.remove('show');
                 };
                 reader.readAsDataURL(logoInput.files[0]);
             } else {
                 updateSchoolHeader();
-                localStorage.setItem('mbjSchoolDetails', JSON.stringify(schoolDetails));
-                alert('School details saved successfully.');
                 document.getElementById('schoolDropdownMenu').classList.remove('show');
             }
 
@@ -1107,7 +1148,7 @@
             deleteSubjectSelect.style.display = 'none';
         }
 
-        // Check for duplicate teachers (used for alerts, not table display)
+        // Check for duplicate teachers
         function checkDuplicates(day, time, newTeacher = null, newLevel = null) {
             if (!schedule[day]?.[time]) return '';
             const teacherCounts = {};
@@ -1278,68 +1319,252 @@
         function saveSchedule() {
             console.log('saveSchedule called');
             try {
-                localStorage.setItem('mbjSchedule', JSON.stringify(schedule));
-                localStorage.setItem('mbjTeachers', JSON.stringify(teachers));
-                localStorage.setItem('mbjDays', JSON.stringify(days));
-                localStorage.setItem('mbjTimes', JSON.stringify(times));
-                localStorage.setItem('mbjLevels', JSON.stringify(levels));
-                localStorage.setItem('mbjLevelSubjects', JSON.stringify(levelSubjects));
-                localStorage.setItem('mbjSchoolDetails', JSON.stringify(schoolDetails));
-                alert('Schedule and school details saved successfully!');
+                const scheduleName = prompt('Enter a name for this schedule:').trim();
+                if (!scheduleName) {
+                    alert('Schedule name cannot be empty.');
+                    return;
+                }
+
+                const schedules = JSON.parse(localStorage.getItem('mbjSchedules') || '[]');
+                const timestamp = new Date().toISOString();
+                const scheduleData = {
+                    name: scheduleName,
+                    timestamp: timestamp,
+                    schedule: schedule,
+                    teachers: teachers,
+                    days: days,
+                    times: times,
+                    levels: levels,
+                    levelSubjects: levelSubjects,
+                    schoolDetails: schoolDetails
+                };
+
+                // Check for duplicate name
+                if (schedules.some(s => s.name === scheduleName)) {
+                    if (!confirm(`A schedule named "${scheduleName}" already exists. Overwrite it?`)) {
+                        return;
+                    }
+                    schedules.splice(schedules.findIndex(s => s.name === scheduleName), 1);
+                }
+
+                schedules.push(scheduleData);
+                localStorage.setItem('mbjSchedules', JSON.stringify(schedules));
+
+                // Migrate old single schedule format if it exists
+                if (localStorage.getItem('mbjSchedule')) {
+                    const oldSchedule = {
+                        name: 'Legacy Schedule',
+                        timestamp: new Date().toISOString(),
+                        schedule: JSON.parse(localStorage.getItem('mbjSchedule') || '{}'),
+                        teachers: JSON.parse(localStorage.getItem('mbjTeachers') || '[]'),
+                        days: JSON.parse(localStorage.getItem('mbjDays') || '[]'),
+                        times: JSON.parse(localStorage.getItem('mbjTimes') || '[]'),
+                        levels: JSON.parse(localStorage.getItem('mbjLevels') || '[]'),
+                        levelSubjects: JSON.parse(localStorage.getItem('mbjLevelSubjects') || '{}'),
+                        schoolDetails: JSON.parse(localStorage.getItem('mbjSchoolDetails') || '{}')
+                    };
+                    schedules.push(oldSchedule);
+                    localStorage.setItem('mbjSchedules', JSON.stringify(schedules));
+                    localStorage.removeItem('mbjSchedule');
+                    localStorage.removeItem('mbjTeachers');
+                    localStorage.removeItem('mbjDays');
+                    localStorage.removeItem('mbjTimes');
+                    localStorage.removeItem('mbjLevels');
+                    localStorage.removeItem('mbjLevelSubjects');
+                    localStorage.removeItem('mbjSchoolDetails');
+                }
+
+                alert(`Schedule "${scheduleName}" saved successfully!`);
             } catch (error) {
                 console.error('Error saving schedule:', error);
                 alert('Error saving schedule: ' + error.message);
             }
         }
 
-        function loadSchedule() {
-            console.log('loadSchedule called');
+        function showLoadScheduleModal() {
+            console.log('showLoadScheduleModal called');
+            const modal = document.getElementById('loadScheduleModal');
+            const select = document.getElementById('savedSchedulesSelect');
+            select.innerHTML = '<option value="" disabled selected>No saved schedules</option>';
+
             try {
-                const savedSchedule = localStorage.getItem('mbjSchedule');
-                const savedTeachers = localStorage.getItem('mbjTeachers');
-                const savedDays = localStorage.getItem('mbjDays');
-                const savedTimes = localStorage.getItem('mbjTimes');
-                const savedLevels = localStorage.getItem('mbjLevels');
-                const savedLevelSubjects = localStorage.getItem('mbjLevelSubjects');
-                const savedSchoolDetails = localStorage.getItem('mbjSchoolDetails');
-                if (savedSchedule && savedTeachers && savedDays && savedTimes && savedLevels && savedLevelSubjects) {
-                    schedule = JSON.parse(savedSchedule);
-                    teachers = JSON.parse(savedTeachers);
-                    days = JSON.parse(savedDays);
-                    times = JSON.parse(savedTimes);
-                    levels = JSON.parse(savedLevels);
-                    levelSubjects = JSON.parse(savedLevelSubjects);
-                    if (savedSchoolDetails) {
-                        schoolDetails = JSON.parse(savedSchoolDetails);
-                        updateSchoolHeader();
-                    }
-                    const isValid = days.every(day => 
-                        times.every(time => 
-                            levels.every(level => 
-                                schedule[day]?.[time]?.[level] && Array.isArray(schedule[day][time][level])
-                            )
-                        )
-                    );
-                    if (!isValid) {
-                        throw new Error('Invalid schedule data structure.');
-                    }
-                    updateTeacherDropdown();
-                    updateDayDropdown();
-                    updateTimeDropdown();
-                    updateLevelDropdown();
-                    updateClassDropdown();
-                    updateTableHeaders();
-                    updateTable();
-                    alert('Schedule and school details loaded successfully!');
-                } else {
-                    alert('No saved schedule found.');
+                const schedules = JSON.parse(localStorage.getItem('mbjSchedules') || '[]');
+                if (schedules.length === 0) {
+                    alert('No saved schedules found.');
+                    return;
                 }
+
+                schedules.forEach((sched, index) => {
+                    const option = document.createElement('option');
+                    option.value = index;
+                    option.textContent = `${sched.name} (${new Date(sched.timestamp).toLocaleString()})`;
+                    select.appendChild(option);
+                });
+
+                modal.classList.add('show');
+            } catch (error) {
+                console.error('Error loading schedules:', error);
+                alert('Error loading schedules: ' + error.message);
+            }
+        }
+
+        function loadSchedule(index) {
+            console.log('loadSchedule called with index:', index);
+            try {
+                const schedules = JSON.parse(localStorage.getItem('mbjSchedules') || '[]');
+                if (index < 0 || index >= schedules.length) {
+                    throw new Error('Invalid schedule index.');
+                }
+
+                const hasUnsavedChanges = days.length > 0 || times.length > 0 || teachers.length > 0 || 
+                                         levels.length > 0 || Object.keys(levelSubjects).length > 0 || 
+                                         Object.keys(schedule).length > 0;
+                if (hasUnsavedChanges && !confirm('Loading a saved schedule will overwrite your current schedule. Proceed?')) {
+                    console.log('Load cancelled due to unsaved changes');
+                    return;
+                }
+
+                const selectedSchedule = schedules[index];
+                schedule = selectedSchedule.schedule || {};
+                teachers = selectedSchedule.teachers || [];
+                days = selectedSchedule.days || [];
+                times = selectedSchedule.times || [];
+                levels = selectedSchedule.levels || [];
+                levelSubjects = selectedSchedule.levelSubjects || {};
+                schoolDetails = selectedSchedule.schoolDetails || { name: '', address: '', secRegNo: '', logo: '' };
+
+                // Validate schedule structure
+                const isValid = days.every(day => 
+                    times.every(time => 
+                        levels.every(level => 
+                            schedule[day]?.[time]?.[level] && Array.isArray(schedule[day][time][level])
+                        )
+                    )
+                );
+                if (!isValid) {
+                    throw new Error('Invalid schedule data structure. Some entries may be missing or corrupted.');
+                }
+
+                // Validate levelSubjects
+                const isValidSubjects = levels.every(level => levelSubjects[level] && Array.isArray(levelSubjects[level]));
+                if (!isValidSubjects) {
+                    throw new Error('Invalid subject data. Each level must have an associated subject array.');
+                }
+
+                // Validate schoolDetails
+                if (schoolDetails && (!schoolDetails.name || !schoolDetails.address)) {
+                    console.warn('School details incomplete; using defaults for missing fields.');
+                    schoolDetails.name = schoolDetails.name || '';
+                    schoolDetails.address = schoolDetails.address || '';
+                    schoolDetails.secRegNo = schoolDetails.secRegNo || '';
+                    schoolDetails.logo = schoolDetails.logo || '';
+                }
+
+                // Clear search filter
+                currentSearch = '';
+                document.getElementById('searchFilter').value = '';
+
+                // Update UI
+                updateTeacherDropdown();
+                updateDayDropdown();
+                updateTimeDropdown();
+                updateLevelDropdown();
+                updateClassDropdown();
+                updateTableHeaders();
+                updateTable();
+                updateSchoolHeader();
+
+                alert(`Schedule "${selectedSchedule.name}" loaded successfully! You can now edit the schedule.`);
             } catch (error) {
                 console.error('Error loading schedule:', error);
-                alert('Error loading schedule: ' + error.message);
-                initializeSchedule();
-                updateTable();
+                alert('Error loading schedule: ' + error.message + '. Starting with a fresh schedule.');
+                createNewSchedule();
             }
+        }
+
+        function deleteSchedule() {
+            console.log('deleteSchedule called');
+            try {
+                const select = document.getElementById('savedSchedulesSelect');
+                const index = parseInt(select.value);
+                if (isNaN(index)) {
+                    alert('Please select a schedule to delete.');
+                    return;
+                }
+
+                const schedules = JSON.parse(localStorage.getItem('mbjSchedules') || '[]');
+                if (index < 0 || index >= schedules.length) {
+                    throw new Error('Invalid schedule index.');
+                }
+
+                const scheduleName = schedules[index].name;
+                if (!confirm(`Are you sure you want to delete the schedule "${scheduleName}"? This action cannot be undone.`)) {
+                    console.log('Delete cancelled by user');
+                    return;
+                }
+
+                // Remove the selected schedule
+                schedules.splice(index, 1);
+                localStorage.setItem('mbjSchedules', JSON.stringify(schedules));
+
+                // Update the dropdown
+                select.innerHTML = '<option value="" disabled selected>No saved schedules</option>';
+                if (schedules.length > 0) {
+                    schedules.forEach((sched, idx) => {
+                        const option = document.createElement('option');
+                        option.value = idx;
+                        option.textContent = `${sched.name} (${new Date(sched.timestamp).toLocaleString()})`;
+                        select.appendChild(option);
+                    });
+                } else {
+                    // Close modal if no schedules remain
+                    document.getElementById('loadScheduleModal').classList.remove('show');
+                    alert('All schedules have been deleted.');
+                }
+
+                alert(`Schedule "${scheduleName}" deleted successfully.`);
+            } catch (error) {
+                console.error('Error deleting schedule:', error);
+                alert('Error deleting schedule: ' + error.message);
+            }
+        }
+
+        function createNewSchedule() {
+            console.log('createNewSchedule called');
+            // Reset in-memory data
+            schedule = {};
+            days = [];
+            times = [];
+            teachers = [];
+            levels = [];
+            levelSubjects = {};
+            schoolDetails = {
+                name: '',
+                address: '',
+                secRegNo: '',
+                logo: ''
+            };
+
+            // Reset form inputs
+            document.getElementById('teacherName').value = '';
+            document.getElementById('day').value = '';
+            document.getElementById('time').value = '';
+            document.getElementById('level').value = '';
+            document.getElementById('class').innerHTML = '<option value="" disabled selected>No subjects added</option>';
+            document.getElementById('searchFilter').value = '';
+            currentSearch = '';
+
+            // Update dropdowns and table
+            updateTeacherDropdown();
+            updateDayDropdown();
+            updateTimeDropdown();
+            updateLevelDropdown();
+            updateClassDropdown();
+            updateTableHeaders();
+            updateTable();
+            updateSchoolHeader();
+
+            alert('New schedule created. You can start adding teachers, days, times, levels, and subjects.');
         }
 
         function printSchedule() {
@@ -1464,13 +1689,6 @@
             updateTableHeaders();
             updateTable();
             updateSchoolHeader();
-
-            // Load saved school details
-            const savedSchoolDetails = localStorage.getItem('mbjSchoolDetails');
-            if (savedSchoolDetails) {
-                schoolDetails = JSON.parse(savedSchoolDetails);
-                updateSchoolHeader();
-            }
 
             // School Dropdown
             const schoolDropdownButton = document.getElementById('schoolDropdown');
@@ -1641,14 +1859,24 @@
             const saveScheduleButton = document.getElementById('saveSchedule');
             const editScheduleButton = document.getElementById('editSchedule');
             const printScheduleButton = document.getElementById('printSchedule');
+            const createNewScheduleButton = document.getElementById('createNewSchedule');
+            const loadSelectedScheduleButton = document.getElementById('loadSelectedSchedule');
+            const deleteSelectedScheduleButton = document.getElementById('deleteSelectedSchedule');
+            const cancelLoadScheduleButton = document.getElementById('cancelLoadSchedule');
 
-            if (!addTeacherButton || !saveToGalleryButton || !saveScheduleButton || !editScheduleButton || !printScheduleButton) {
+            if (!addTeacherButton || !saveToGalleryButton || !saveScheduleButton || !editScheduleButton || 
+                !printScheduleButton || !createNewScheduleButton || !loadSelectedScheduleButton || 
+                !deleteSelectedScheduleButton || !cancelLoadScheduleButton) {
                 console.error('Main buttons not found:', {
                     addTeacherButton: !!addTeacherButton,
                     saveToGalleryButton: !!saveToGalleryButton,
                     saveScheduleButton: !!saveScheduleButton,
                     editScheduleButton: !!editScheduleButton,
-                    printScheduleButton: !!printScheduleButton
+                    printScheduleButton: !!printScheduleButton,
+                    createNewScheduleButton: !!createNewScheduleButton,
+                    loadSelectedScheduleButton: !!loadSelectedScheduleButton,
+                    deleteSelectedScheduleButton: !!deleteSelectedScheduleButton,
+                    cancelLoadScheduleButton: !!cancelLoadScheduleButton
                 });
                 alert('Error: One or more main buttons not found. Please check the page.');
                 return;
@@ -1668,14 +1896,37 @@
             });
             editScheduleButton.addEventListener('click', () => {
                 console.log('editScheduleButton click event');
-                loadSchedule();
+                showLoadScheduleModal();
             });
             printScheduleButton.addEventListener('click', () => {
                 console.log('printScheduleButton click event');
                 printSchedule();
             });
+            createNewScheduleButton.addEventListener('click', () => {
+                console.log('createNewScheduleButton click event');
+                createNewSchedule();
+            });
+            loadSelectedScheduleButton.addEventListener('click', () => {
+                console.log('loadSelectedScheduleButton click event');
+                const select = document.getElementById('savedSchedulesSelect');
+                const index = parseInt(select.value);
+                if (!isNaN(index)) {
+                    loadSchedule(index);
+                    document.getElementById('loadScheduleModal').classList.remove('show');
+                } else {
+                    alert('Please select a schedule to load.');
+                }
+            });
+            deleteSelectedScheduleButton.addEventListener('click', () => {
+                console.log('deleteSelectedScheduleButton click event');
+                deleteSchedule();
+            });
+            cancelLoadScheduleButton.addEventListener('click', () => {
+                console.log('cancelLoadScheduleButton click event');
+                document.getElementById('loadScheduleModal').classList.remove('show');
+            });
 
-            // Close all dropdowns when clicking outside
+            // Close all dropdowns and modals when clicking outside
             document.addEventListener('click', function(event) {
                 console.log('Global click event');
                 const dropdowns = [
@@ -1693,6 +1944,11 @@
                         if (select) select.style.display = 'none';
                     }
                 });
+
+                const loadScheduleModal = document.getElementById('loadScheduleModal');
+                if (!loadScheduleModal.contains(event.target) && !editScheduleButton.contains(event.target)) {
+                    loadScheduleModal.classList.remove('show');
+                }
             });
         });
     </script>
