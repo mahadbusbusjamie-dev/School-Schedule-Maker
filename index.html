@@ -48,7 +48,7 @@
             padding: 8px;
             font-size: 14px;
             width: 100%;
-            max-width: 200px;
+            max-width: 230px;
             border-radius: 4px;
             border: 1px solid #ddd;
         }
@@ -201,7 +201,7 @@
             width: 90%;
             max-height: 80vh;
             overflow-y: auto;
-            box-shadow: 0 4px 8px rgba(0, 0, 0, 0.2);
+            box-shadow: 0 4px 8px rgba(0,0,0,0.2);
         }
         .modal-content h2 {
             margin-top: 0;
@@ -276,21 +276,38 @@
                 justify-content: space-between;
                 align-items: center;
                 margin-bottom: 20px;
-                padding: 10px;
+                padding: 10px 0;
                 border-bottom: 2px solid #000;
                 width: 100%;
+                box-sizing: border-box;
+            }
+            #leftLogoContainer, #rightLogoContainer {
+                width: 100px;
+                height: 80px;
+                display: flex;
+                justify-content: center;
+                align-items: center;
+                flex-shrink: 0;
             }
             #schoolHeader img {
-                width: 80px;
-                height: auto;
+                max-width: 80px;
+                max-height: 80px;
+                object-fit: contain;
+                display: block;
+            }
+            #schoolHeader img[src=""] {
+                display: none;
             }
             #schoolDetails {
                 text-align: center;
                 font-size: 12pt;
+                flex: 1;
+                padding: 0 10px;
+                box-sizing: border-box;
             }
             #schoolDetails h2 {
                 margin: 5px 0;
-                font-size: 16pt;
+                font-size: 14pt;
                 font-weight: bold;
             }
             #schoolDetails p {
@@ -456,6 +473,7 @@
                 <button class="dropdown-button" id="teacherDropdown">Teacher Options</button>
                 <div class="dropdown-menu" id="teacherDropdownMenu">
                     <div class="dropdown-item" id="addNewTeacher">Add New Teacher</div>
+                    <div class="dropdown-item" id="addBulkTeachers">Add Bulk Teachers</div>
                     <div class="dropdown-item" id="deleteTeacher">Delete Teacher</div>
                 </div>
             </div>
@@ -469,6 +487,7 @@
                 <button class="dropdown-button" id="dayDropdown">Day Options</button>
                 <div class="dropdown-menu" id="dayDropdownMenu">
                     <div class="dropdown-item" id="addNewDay">Add New Day</div>
+                    <div class="dropdown-item" id="addBulkDays">Add Bulk Days</div>
                     <div class="dropdown-item" id="deleteDay">Delete Day</div>
                 </div>
             </div>
@@ -477,11 +496,13 @@
             </select>
             <select id="time">
                 <option value="" disabled selected>No times added</option>
+           自在
             </select>
             <div class="dropdown">
                 <button class="dropdown-button" id="timeDropdown">Time Options</button>
                 <div class="dropdown-menu" id="timeDropdownMenu">
                     <div class="dropdown-item" id="addNewTime">Add New Time</div>
+                    <div class="dropdown-item" id="addBulkTimes">Add Bulk Times</div>
                     <div class="dropdown-item" id="deleteTime">Delete Time</div>
                 </div>
             </div>
@@ -495,6 +516,7 @@
                 <button class="dropdown-button" id="levelDropdown">Level Options</button>
                 <div class="dropdown-menu" id="levelDropdownMenu">
                     <div class="dropdown-item" id="addNewLevel">Add New Level</div>
+                    <div class="dropdown-item" id="addBulkLevels">Add Bulk Levels</div>
                     <div class="dropdown-item" id="deleteLevel">Delete Level</div>
                 </div>
             </div>
@@ -508,6 +530,7 @@
                 <button class="dropdown-button" id="subjectDropdown">Subject Options</button>
                 <div class="dropdown-menu" id="subjectDropdownMenu">
                     <div class="dropdown-item" id="addNewSubject">Add New Subject</div>
+                    <div class="dropdown-item" id="addBulkSubjects">Add Bulk Subjects</div>
                     <div class="dropdown-item" id="deleteSubject">Delete Subject</div>
                 </div>
             </div>
@@ -524,13 +547,17 @@
     </div>
     <div class="content">
         <div id="schoolHeader">
-            <img id="leftLogo" src="" alt="School Logo">
+            <div id="leftLogoContainer">
+                <img id="leftLogo" src="" alt="School Logo">
+            </div>
             <div id="schoolDetails">
                 <h2 id="printSchoolName"></h2>
                 <p id="printSchoolAddress"></p>
                 <p id="printSecRegNo"></p>
             </div>
-            <img id="rightLogo" src="" alt="School Logo">
+            <div id="rightLogoContainer">
+                <img id="rightLogo" src="" alt="School Logo">
+            </div>
         </div>
         <h1>Generated Schedule</h1>
         <table id="scheduleTable">
@@ -541,649 +568,892 @@
         </table>
     </div>
 
-    <script>
-        let schedule = {};
-        let days = [];
-        let times = [];
-        let teachers = [];
-        let levels = [];
-        let levelSubjects = {};
-        let currentSearch = '';
-        let schoolDetails = {
-            name: '',
-            address: '',
-            secRegNo: '',
-            logo: ''
-        };
+<script>
+    let schedule = {};
+    let days = [];
+    let times = [];
+    let teachers = [];
+    let levels = [];
+    let levelSubjects = {};
+    let currentSearch = '';
+    let schoolDetails = {
+        name: '',
+        address: '',
+        secRegNo: '',
+        logo: ''
+    };
 
-        // Initialize schedule object
-        function initializeSchedule() {
-            schedule = {};
-            if (days.length === 0 || times.length === 0 || levels.length === 0) {
-                return;
-            }
-            days.forEach(day => {
-                schedule[day] = {};
-                times.forEach(time => {
-                    schedule[day][time] = {};
-                    levels.forEach(level => {
-                        schedule[day][time][level] = [];
-                    });
-                });
-            });
+    // Initialize schedule object
+    function initializeSchedule() {
+        schedule = {};
+        if (days.length === 0 || times.length === 0 || levels.length === 0) {
+            return;
         }
-        initializeSchedule();
-
-        // Update teacher dropdown
-        function updateTeacherDropdown() {
-            console.log('updateTeacherDropdown called');
-            const teacherSelect = document.getElementById('teacherName');
-            const deleteTeacherSelect = document.getElementById('deleteTeacherSelect');
-            teacherSelect.innerHTML = '<option value="" disabled selected>' + 
-                (teachers.length === 0 ? 'No teachers added' : 'Select Teacher') + '</option>';
-            deleteTeacherSelect.innerHTML = '<option value="" disabled selected>' + 
-                (teachers.length === 0 ? 'No teachers to delete' : 'Select Teacher to Delete') + '</option>';
-            teachers.forEach(teacher => {
-                const option = document.createElement('option');
-                option.value = teacher;
-                option.textContent = teacher;
-                teacherSelect.appendChild(option);
-                const deleteOption = document.createElement('option');
-                deleteOption.value = teacher;
-                deleteOption.textContent = teacher;
-                deleteTeacherSelect.appendChild(deleteOption);
-            });
-        }
-
-        // Update day dropdown
-        function updateDayDropdown() {
-            console.log('updateDayDropdown called');
-            const daySelect = document.getElementById('day');
-            const deleteDaySelect = document.getElementById('deleteDaySelect');
-            daySelect.innerHTML = '<option value="" disabled selected>' + 
-                (days.length === 0 ? 'No days added' : 'Select Day') + '</option>';
-            deleteDaySelect.innerHTML = '<option value="" disabled selected>' + 
-                (days.length === 0 ? 'No days to delete' : 'Select Day to Delete') + '</option>';
-            days.forEach(day => {
-                const option = document.createElement('option');
-                option.value = day;
-                option.textContent = day;
-                daySelect.appendChild(option);
-                const deleteOption = document.createElement('option');
-                deleteOption.value = day;
-                deleteOption.textContent = day;
-                deleteDaySelect.appendChild(deleteOption);
-            });
-        }
-
-        // Update time dropdown
-        function updateTimeDropdown() {
-            console.log('updateTimeDropdown called');
-            const timeSelect = document.getElementById('time');
-            const deleteTimeSelect = document.getElementById('deleteTimeSelect');
-            timeSelect.innerHTML = '<option value="" disabled selected>' + 
-                (times.length === 0 ? 'No times added' : 'Select Time') + '</option>';
-            deleteTimeSelect.innerHTML = '<option value="" disabled selected>' + 
-                (times.length === 0 ? 'No times to delete' : 'Select Time to Delete') + '</option>';
+        days.forEach(day => {
+            schedule[day] = {};
             times.forEach(time => {
-                const displayTime = time.replace(/(\d{2}:\d{2})-(\d{2}:\d{2})/, (match, start, end) => {
-                    const startHour = parseInt(start.split(':')[0]);
-                    const endHour = parseInt(end.split(':')[0]);
-                    const startPeriod = startHour >= 12 ? 'PM' : 'AM';
-                    const endPeriod = endHour >= 12 ? 'PM' : 'AM';
-                    const formatStart = `${startHour > 12 ? startHour - 12 : startHour || 12}:${start.split(':')[1]}`;
-                    const formatEnd = `${endHour > 12 ? endHour - 12 : endHour || 12}:${end.split(':')[1]}`;
-                    return `${formatStart}-${formatEnd} ${startPeriod}`;
+                schedule[day][time] = {};
+                levels.forEach(level => {
+                    schedule[day][time][level] = [];
                 });
-                const option = document.createElement('option');
-                option.value = time;
-                option.textContent = displayTime;
-                timeSelect.appendChild(option);
-                const deleteOption = document.createElement('option');
-                deleteOption.value = time;
-                deleteOption.textContent = displayTime;
-                deleteTimeSelect.appendChild(deleteOption);
             });
-        }
-
-        // Update level dropdown
-        function updateLevelDropdown() {
-            console.log('updateLevelDropdown called');
-            const levelSelect = document.getElementById('level');
-            const deleteLevelSelect = document.getElementById('deleteLevelSelect');
-            levelSelect.innerHTML = '<option value="" disabled selected>' + 
-                (levels.length === 0 ? 'No levels added' : 'Select Level') + '</option>';
-            deleteLevelSelect.innerHTML = '<option value="" disabled selected>' + 
-                (levels.length === 0 ? 'No levels to delete' : 'Select Level to Delete') + '</option>';
-            levels.forEach(level => {
-                const option = document.createElement('option');
-                option.value = level;
-                option.textContent = level;
-                levelSelect.appendChild(option);
-                const deleteOption = document.createElement('option');
-                deleteOption.value = level;
-                deleteOption.textContent = level;
-                deleteLevelSelect.appendChild(deleteOption);
-            });
-        }
-
-        // Update class dropdown based on selected level
-        function updateClassDropdown() {
-            console.log('updateClassDropdown called');
-            const level = document.getElementById('level').value;
-            const classSelect = document.getElementById('class');
-            const deleteSubjectSelect = document.getElementById('deleteSubjectSelect');
-            classSelect.innerHTML = '<option value="" disabled selected>' + 
-                (!level || !levelSubjects[level] || levelSubjects[level].length === 0 
-                    ? 'No subjects added' : 'Select Subject') + '</option>';
-            deleteSubjectSelect.innerHTML = '<option value="" disabled selected>' + 
-                (!level || !levelSubjects[level] || levelSubjects[level].length === 0 
-                    ? 'No subjects to delete' : 'Select Subject to Delete') + '</option>';
-
-            if (level && levelSubjects[level]) {
-                levelSubjects[level].forEach(subject => {
-                    const option = document.createElement('option');
-                    option.value = subject;
-                    option.textContent = subject;
-                    classSelect.appendChild(option);
-                    const deleteOption = document.createElement('option');
-                    deleteOption.value = subject;
-                    deleteOption.textContent = subject;
-                    deleteSubjectSelect.appendChild(deleteOption);
-                });
-            }
-        }
-
-        // Update table headers dynamically
-        function updateTableHeaders() {
-            console.log('updateTableHeaders called');
-            const thead = document.getElementById('tableHeader');
-            thead.innerHTML = '';
-            const row = document.createElement('tr');
-            row.innerHTML = '<th>Day</th><th>Time</th>';
-            levels.forEach(level => {
-                row.innerHTML += `<th>${level}</th>`;
-            });
-            thead.appendChild(row);
-        }
-
-        // Update school header for printing
-        function updateSchoolHeader() {
-            console.log('updateSchoolHeader called');
-            document.getElementById('printSchoolName').textContent = schoolDetails.name || '';
-            document.getElementById('printSchoolAddress').textContent = schoolDetails.address || '';
-            document.getElementById('printSecRegNo').textContent = schoolDetails.secRegNo ? `SEC Reg. No.: ${schoolDetails.secRegNo}` : '';
-            document.getElementById('leftLogo').src = schoolDetails.logo || '';
-            document.getElementById('rightLogo').src = schoolDetails.logo || '';
-        }
-
-        // Event listener for level change
-        document.getElementById('level').addEventListener('change', () => {
-            console.log('level change event');
-            updateClassDropdown();
         });
+    }
+    initializeSchedule();
 
-        // Validation functions
-        function isTeacherUsed(teacher) {
-            return days.some(day => 
-                times.some(time => 
-                    levels.some(level => 
-                        schedule[day]?.[time]?.[level]?.some(entry => entry.teacher === teacher)
-                    )
-                )
-            );
-        }
+    // Update teacher dropdown
+    function updateTeacherDropdown() {
+        console.log('updateTeacherDropdown called');
+        const teacherSelect = document.getElementById('teacherName');
+        const deleteTeacherSelect = document.getElementById('deleteTeacherSelect');
+        teacherSelect.innerHTML = '<option value="" disabled selected>' + 
+            (teachers.length === 0 ? 'No teachers added' : 'Select Teacher') + '</option>';
+        deleteTeacherSelect.innerHTML = '<option value="" disabled selected>' + 
+            (teachers.length === 0 ? 'No teachers to delete' : 'Select Teacher to Delete') + '</option>';
+        teachers.forEach(teacher => {
+            const option = document.createElement('option');
+            option.value = teacher;
+            option.textContent = teacher;
+            teacherSelect.appendChild(option);
+            const deleteOption = document.createElement('option');
+            deleteOption.value = teacher;
+            deleteOption.textContent = teacher;
+            deleteTeacherSelect.appendChild(deleteOption);
+        });
+    }
 
-        function isTimeUsed(time) {
-            return days.some(day => 
-                levels.some(level => 
-                    schedule[day]?.[time]?.[level]?.length > 0
-                )
-            );
-        }
+    // Update day dropdown
+    function updateDayDropdown() {
+        console.log('updateDayDropdown called');
+        const daySelect = document.getElementById('day');
+        const deleteDaySelect = document.getElementById('deleteDaySelect');
+        daySelect.innerHTML = '<option value="" disabled selected>' + 
+            (days.length === 0 ? 'No days added' : 'Select Day') + '</option>';
+        deleteDaySelect.innerHTML = '<option value="" disabled selected>' + 
+            (days.length === 0 ? 'No days to delete' : 'Select Day to Delete') + '</option>';
+        days.forEach(day => {
+            const option = document.createElement('option');
+            option.value = day;
+            option.textContent = day;
+            daySelect.appendChild(option);
+            const deleteOption = document.createElement('option');
+            deleteOption.value = day;
+            deleteOption.textContent = day;
+            deleteDaySelect.appendChild(deleteOption);
+        });
+    }
 
-        function isDayUsed(day) {
-            return times.some(time => 
-                levels.some(level => 
-                    schedule[day]?.[time]?.[level]?.length > 0
-                )
-            );
-        }
-
-        function isLevelUsed(level) {
-            return days.some(day => 
-                times.some(time => 
-                    schedule[day]?.[time]?.[level]?.length > 0
-                )
-            );
-        }
-
-        function isSubjectUsed(level, subject) {
-            return days.some(day => 
-                times.some(time => 
-                    schedule[day]?.[time]?.[level]?.some(entry => entry.class === subject)
-                )
-            );
-        }
-
-        // School Details Functions
-        function toggleSchoolDropdown(event) {
-            console.log('toggleSchoolDropdown called');
-            event.stopPropagation();
-            const dropdownMenu = document.getElementById('schoolDropdownMenu');
-            document.querySelectorAll('.dropdown-menu').forEach(menu => {
-                if (menu !== dropdownMenu) menu.classList.remove('show');
+    // Update time dropdown
+    function updateTimeDropdown() {
+        console.log('updateTimeDropdown called');
+        const timeSelect = document.getElementById('time');
+        const deleteTimeSelect = document.getElementById('deleteTimeSelect');
+        timeSelect.innerHTML = '<option value="" disabled selected>' + 
+            (times.length === 0 ? 'No times added' : 'Select Time') + '</option>';
+        deleteTimeSelect.innerHTML = '<option value="" disabled selected>' + 
+            (times.length === 0 ? 'No times to delete' : 'Select Time to Delete') + '</option>';
+        times.forEach(time => {
+            const displayTime = time.replace(/(\d{2}:\d{2})-(\d{2}:\d{2})/, (match, start, end) => {
+                const startHour = parseInt(start.split(':')[0]);
+                const endHour = parseInt(end.split(':')[0]);
+                const startPeriod = startHour >= 12 ? 'PM' : 'AM';
+                const endPeriod = endHour >= 12 ? 'PM' : 'AM';
+                const formatStart = `${startHour > 12 ? startHour - 12 : startHour || 12}:${start.split(':')[1]}`;
+                const formatEnd = `${endHour > 12 ? endHour - 12 : endHour || 12}:${end.split(':')[1]}`;
+                return `${formatStart}-${formatEnd} ${startPeriod}`;
             });
-            document.querySelectorAll('select[id$="Select"]').forEach(select => {
-                select.style.display = 'none';
+            const option = document.createElement('option');
+            option.value = time;
+            option.textContent = displayTime;
+            timeSelect.appendChild(option);
+            const deleteOption = document.createElement('option');
+            deleteOption.value = time;
+            deleteOption.textContent = displayTime;
+            deleteTimeSelect.appendChild(deleteOption);
+        });
+    }
+
+    // Update level dropdown
+    function updateLevelDropdown() {
+        console.log('updateLevelDropdown called');
+        const levelSelect = document.getElementById('level');
+        const deleteLevelSelect = document.getElementById('deleteLevelSelect');
+        levelSelect.innerHTML = '<option value="" disabled selected>' + 
+            (levels.length === 0 ? 'No levels added' : 'Select Level') + '</option>';
+        deleteLevelSelect.innerHTML = '<option value="" disabled selected>' + 
+            (levels.length === 0 ? 'No levels to delete' : 'Select Level to Delete') + '</option>';
+        levels.forEach(level => {
+            const option = document.createElement('option');
+            option.value = level;
+            option.textContent = level;
+            levelSelect.appendChild(option);
+            const deleteOption = document.createElement('option');
+            deleteOption.value = level;
+            deleteOption.textContent = level;
+            deleteLevelSelect.appendChild(deleteOption);
+        });
+    }
+
+    // Update class dropdown based on selected level
+    function updateClassDropdown() {
+        console.log('updateClassDropdown called');
+        const level = document.getElementById('level').value;
+        const classSelect = document.getElementById('class');
+        const deleteSubjectSelect = document.getElementById('deleteSubjectSelect');
+        classSelect.innerHTML = '<option value="" disabled selected>' + 
+            (!level || !levelSubjects[level] || levelSubjects[level].length === 0 
+                ? 'No subjects added' : 'Select Subject') + '</option>';
+        deleteSubjectSelect.innerHTML = '<option value="" disabled selected>' + 
+            (!level || !levelSubjects[level] || levelSubjects[level].length === 0 
+                ? 'No subjects to delete' : 'Select Subject to Delete') + '</option>';
+
+        if (level && levelSubjects[level]) {
+            levelSubjects[level].forEach(subject => {
+                const option = document.createElement('option');
+                option.value = subject;
+                option.textContent = subject;
+                classSelect.appendChild(option);
+                const deleteOption = document.createElement('option');
+                deleteOption.value = subject;
+                deleteOption.textContent = subject;
+                deleteSubjectSelect.appendChild(deleteOption);
             });
-            dropdownMenu.classList.toggle('show');
+        }
+    }
+
+    // Update table headers dynamically
+    function updateTableHeaders() {
+        console.log('updateTableHeaders called');
+        const thead = document.getElementById('tableHeader');
+        thead.innerHTML = '';
+        const row = document.createElement('tr');
+        row.innerHTML = '<th>Day</th><th>Time</th>';
+        levels.forEach(level => {
+            row.innerHTML += `<th>${level}</th>`;
+        });
+        thead.appendChild(row);
+    }
+
+    // Update school header for printing
+    function updateSchoolHeader() {
+        console.log('updateSchoolHeader called');
+        document.getElementById('printSchoolName').textContent = schoolDetails.name || '';
+        document.getElementById('printSchoolAddress').textContent = schoolDetails.address || '';
+        document.getElementById('printSecRegNo').textContent = schoolDetails.secRegNo ? `SEC Reg. No.: ${schoolDetails.secRegNo}` : '';
+        
+        const leftLogo = document.getElementById('leftLogo');
+        const rightLogo = document.getElementById('rightLogo');
+        if (schoolDetails.logo) {
+            leftLogo.src = schoolDetails.logo;
+            rightLogo.src = schoolDetails.logo;
+            leftLogo.style.display = 'block';
+            rightLogo.style.display = 'block';
+        } else {
+            leftLogo.src = '';
+            rightLogo.src = '';
+            leftLogo.style.display = 'none';
+            rightLogo.style.display = 'none';
+        }
+    }
+
+    // Event listener for level change
+    document.getElementById('level').addEventListener('change', () => {
+        console.log('level change event');
+        updateClassDropdown();
+    });
+
+    // Validation functions
+    function isTeacherUsed(teacher) {
+        return days.some(day => 
+            times.some(time => 
+                levels.some(level => 
+                    schedule[day]?.[time]?.[level]?.some(entry => entry.teacher === teacher)
+                )
+            )
+        );
+    }
+
+    function isTimeUsed(time) {
+        return days.some(day => 
+            levels.some(level => 
+                schedule[day]?.[time]?.[level]?.length > 0
+            )
+        );
+    }
+
+    function isDayUsed(day) {
+        return times.some(time => 
+            levels.some(level => 
+                schedule[day]?.[time]?.[level]?.length > 0
+            )
+        );
+    }
+
+    function isLevelUsed(level) {
+        return days.some(day => 
+            times.some(time => 
+                schedule[day]?.[time]?.[level]?.length > 0
+            )
+        );
+    }
+
+    function isSubjectUsed(level, subject) {
+        return days.some(day => 
+            times.some(time => 
+                schedule[day]?.[time]?.[level]?.some(entry => entry.class === subject)
+            )
+        );
+    }
+
+    // School Details Functions
+    function toggleSchoolDropdown(event) {
+        console.log('toggleSchoolDropdown called');
+        event.stopPropagation();
+        const dropdownMenu = document.getElementById('schoolDropdownMenu');
+        document.querySelectorAll('.dropdown-menu').forEach(menu => {
+            if (menu !== dropdownMenu) menu.classList.remove('show');
+        });
+        document.querySelectorAll('select[id$="Select"]').forEach(select => {
+            select.style.display = 'none';
+        });
+        dropdownMenu.classList.toggle('show');
+    }
+
+    function handleSchoolFormSubmit(event) {
+        console.log('handleSchoolFormSubmit called');
+        event.preventDefault();
+        const name = document.getElementById('schoolName').value.trim();
+        const address = document.getElementById('schoolAddress').value.trim();
+        const secRegNo = document.getElementById('secRegNo').value.trim();
+        const logoInput = document.getElementById('schoolLogo');
+
+        if (!name || !address) {
+            alert('School Name and Address are required.');
+            return;
         }
 
-        function handleSchoolFormSubmit(event) {
-            console.log('handleSchoolFormSubmit called');
-            event.preventDefault();
-            const name = document.getElementById('schoolName').value.trim();
-            const address = document.getElementById('schoolAddress').value.trim();
-            const secRegNo = document.getElementById('secRegNo').value.trim();
-            const logoInput = document.getElementById('schoolLogo');
+        schoolDetails.name = name;
+        schoolDetails.address = address;
+        schoolDetails.secRegNo = secRegNo;
 
-            if (!name || !address) {
-                alert('School Name and Address are required.');
-                return;
-            }
-
-            schoolDetails.name = name;
-            schoolDetails.address = address;
-            schoolDetails.secRegNo = secRegNo;
-
-            if (logoInput.files && logoInput.files[0]) {
-                const reader = new FileReader();
-                reader.onload = function(e) {
-                    schoolDetails.logo = e.target.result;
-                    updateSchoolHeader();
-                    document.getElementById('schoolDropdownMenu').classList.remove('show');
-                };
-                reader.readAsDataURL(logoInput.files[0]);
-            } else {
+        if (logoInput.files && logoInput.files[0]) {
+            const reader = new FileReader();
+            reader.onload = function(e) {
+                schoolDetails.logo = e.target.result;
                 updateSchoolHeader();
                 document.getElementById('schoolDropdownMenu').classList.remove('show');
-            }
-
-            // Reset form
-            document.getElementById('schoolForm').reset();
+            };
+            reader.readAsDataURL(logoInput.files[0]);
+        } else {
+            updateSchoolHeader();
+            document.getElementById('schoolDropdownMenu').classList.remove('show');
         }
 
-        // Teacher Functions
-        function addNewTeacher(event) {
-            console.log('addNewTeacher called');
-            event.stopPropagation();
-            const newTeacher = prompt('Enter new teacher name:').trim();
-            if (!newTeacher) {
-                alert('Teacher name cannot be empty.');
+        // Reset form
+        document.getElementById('schoolForm').reset();
+    }
+
+    // Teacher Functions
+    function addNewTeacher(event) {
+        console.log('addNewTeacher called');
+        event.stopPropagation();
+        const newTeacher = prompt('Enter new teacher name:').trim();
+        if (!newTeacher) {
+            alert('Teacher name cannot be empty.');
+            return;
+        }
+        if (teachers.includes(newTeacher)) {
+            alert('Teacher name already exists.');
+            return;
+        }
+        teachers.push(newTeacher);
+        updateTeacherDropdown();
+        updateTable();
+        alert(`Teacher ${newTeacher} added successfully.`);
+        document.getElementById('teacherDropdownMenu').classList.remove('show');
+    }
+
+    function addBulkTeachers(event) {
+        console.log('addBulkTeachers called');
+        event.stopPropagation();
+        const input = prompt('Enter teacher names separated by commas (e.g., Teacher1,Teacher2,Teacher3):').trim();
+        if (!input) {
+            alert('Input cannot be empty.');
+            return;
+        }
+        const newTeachers = input.split(',').map(t => t.trim()).filter(t => t);
+        if (newTeachers.length === 0) {
+            alert('No valid teacher names provided.');
+            return;
+        }
+        let added = 0;
+        let skipped = 0;
+        newTeachers.forEach(teacher => {
+            if (!teacher) return;
+            if (teachers.includes(teacher)) {
+                skipped++;
                 return;
             }
-            if (teachers.includes(newTeacher)) {
-                alert('Teacher name already exists.');
-                return;
-            }
-            teachers.push(newTeacher);
+            teachers.push(teacher);
+            added++;
+        });
+        updateTeacherDropdown();
+        updateTable();
+        alert(`Added ${added} teacher(s). Skipped ${skipped} duplicate(s).`);
+        document.getElementById('teacherDropdownMenu').classList.remove('show');
+    }
+
+    function deleteTeacher(event) {
+        console.log('deleteTeacher called');
+        event.stopPropagation();
+        const deleteTeacherSelect = document.getElementById('deleteTeacherSelect');
+        const teacher = deleteTeacherSelect.value;
+        if (!teacher) {
+            alert('Please select a teacher to delete.');
+            return;
+        }
+        if (isTeacherUsed(teacher)) {
+            alert('Cannot delete teacher because they are assigned in the schedule.');
+            return;
+        }
+        if (confirm(`Are you sure you want to delete ${teacher}?`)) {
+            teachers = teachers.filter(t => t !== teacher);
             updateTeacherDropdown();
             updateTable();
-            alert(`Teacher ${newTeacher} added successfully.`);
-            document.getElementById('teacherDropdownMenu').classList.remove('show');
-        }
-
-        function deleteTeacher(event) {
-            console.log('deleteTeacher called');
-            event.stopPropagation();
-            const deleteTeacherSelect = document.getElementById('deleteTeacherSelect');
-            const teacher = deleteTeacherSelect.value;
-            if (!teacher) {
-                alert('Please select a teacher to delete.');
-                return;
-            }
-            if (isTeacherUsed(teacher)) {
-                alert('Cannot delete teacher because they are assigned in the schedule.');
-                return;
-            }
-            if (confirm(`Are you sure you want to delete ${teacher}?`)) {
-                teachers = teachers.filter(t => t !== teacher);
-                updateTeacherDropdown();
-                updateTable();
-                alert(`Teacher ${teacher} deleted successfully.`);
+            alert(`Teacher ${teacher} deleted successfully.`);
+            deleteTeacherSelect.value = '';
+            if (teachers.length === 0) {
                 deleteTeacherSelect.style.display = 'none';
-                deleteTeacherSelect.value = '';
             }
         }
+    }
 
-        function toggleTeacherDropdown(event) {
-            console.log('toggleTeacherDropdown called');
-            event.stopPropagation();
-            const dropdownMenu = document.getElementById('teacherDropdownMenu');
-            const deleteTeacherSelect = document.getElementById('deleteTeacherSelect');
-            document.querySelectorAll('.dropdown-menu').forEach(menu => {
-                if (menu !== dropdownMenu) menu.classList.remove('show');
-            });
-            document.querySelectorAll('select[id$="Select"]').forEach(select => {
-                if (select !== deleteTeacherSelect) select.style.display = 'none';
-            });
-            dropdownMenu.classList.toggle('show');
-            deleteTeacherSelect.style.display = 'none';
+    function toggleTeacherDropdown(event) {
+        console.log('toggleTeacherDropdown called');
+        event.stopPropagation();
+        const dropdownMenu = document.getElementById('teacherDropdownMenu');
+        const deleteTeacherSelect = document.getElementById('deleteTeacherSelect');
+        document.querySelectorAll('.dropdown-menu').forEach(menu => {
+            if (menu !== dropdownMenu) menu.classList.remove('show');
+        });
+        document.querySelectorAll('select[id$="Select"]').forEach(select => {
+            if (select !== deleteTeacherSelect) select.style.display = 'none';
+        });
+        dropdownMenu.classList.toggle('show');
+        deleteTeacherSelect.style.display = 'none';
+    }
+
+    // Day Functions
+    function addNewDay(event) {
+        console.log('addNewDay called');
+        event.stopPropagation();
+        const newDay = prompt('Enter new day:').trim();
+        if (!newDay) {
+            alert('Day name cannot be empty.');
+            return;
         }
+        if (days.includes(newDay)) {
+            alert('Day already exists.');
+            return;
+        }
+        days.push(newDay);
+        schedule[newDay] = {};
+        times.forEach(time => {
+            schedule[newDay][time] = {};
+            levels.forEach(level => {
+                schedule[newDay][time][level] = [];
+            });
+        });
+        updateDayDropdown();
+        updateTable();
+        alert(`Day ${newDay} added successfully.`);
+        document.getElementById('dayDropdownMenu').classList.remove('show');
+    }
 
-        // Day Functions
-        function addNewDay(event) {
-            console.log('addNewDay called');
-            event.stopPropagation();
-            const newDay = prompt('Enter new day:').trim();
-            if (!newDay) {
-                alert('Day name cannot be empty.');
+    function addBulkDays(event) {
+        console.log('addBulkDays called');
+        event.stopPropagation();
+        const input = prompt('Enter days separated by commas (e.g., Monday,Tuesday,Wednesday):').trim();
+        if (!input) {
+            alert('Input cannot be empty.');
+            return;
+        }
+        const newDays = input.split(',').map(d => d.trim()).filter(d => d);
+        if (newDays.length === 0) {
+            alert('No valid days provided.');
+            return;
+        }
+        let added = 0;
+        let skipped = 0;
+        newDays.forEach(day => {
+            if (!day) return;
+            if (days.includes(day)) {
+                skipped++;
                 return;
             }
-            if (days.includes(newDay)) {
-                alert('Day already exists.');
-                return;
-            }
-            days.push(newDay);
-            schedule[newDay] = {};
+            days.push(day);
+            schedule[day] = {};
             times.forEach(time => {
-                schedule[newDay][time] = {};
+                schedule[day][time] = {};
                 levels.forEach(level => {
-                    schedule[newDay][time][level] = [];
+                    schedule[day][time][level] = [];
                 });
             });
+            added++;
+        });
+        updateDayDropdown();
+        updateTable();
+        alert(`Added ${added} day(s). Skipped ${skipped} duplicate(s).`);
+        document.getElementById('dayDropdownMenu').classList.remove('show');
+    }
+
+    function deleteDay(event) {
+        console.log('deleteDay called');
+        event.stopPropagation();
+        const deleteDaySelect = document.getElementById('deleteDaySelect');
+        const day = deleteDaySelect.value;
+        if (!day) {
+            alert('Please select a day to delete.');
+            return;
+        }
+        if (isDayUsed(day)) {
+            alert('Cannot delete day because it has scheduled entries.');
+            return;
+        }
+        if (confirm(`Are you sure you want to delete ${day}?`)) {
+            days = days.filter(d => d !== day);
+            delete schedule[day];
             updateDayDropdown();
             updateTable();
-            alert(`Day ${newDay} added successfully.`);
-            document.getElementById('dayDropdownMenu').classList.remove('show');
-        }
-
-        function deleteDay(event) {
-            console.log('deleteDay called');
-            event.stopPropagation();
-            const deleteDaySelect = document.getElementById('deleteDaySelect');
-            const day = deleteDaySelect.value;
-            if (!day) {
-                alert('Please select a day to delete.');
-                return;
-            }
-            if (isDayUsed(day)) {
-                alert('Cannot delete day because it has scheduled entries.');
-                return;
-            }
-            if (confirm(`Are you sure you want to delete ${day}?`)) {
-                days = days.filter(d => d !== day);
-                delete schedule[day];
-                updateDayDropdown();
-                updateTable();
-                alert(`Day ${day} deleted successfully.`);
+            alert(`Day ${day} deleted successfully.`);
+            deleteDaySelect.value = '';
+            if (days.length === 0) {
                 deleteDaySelect.style.display = 'none';
-                deleteDaySelect.value = '';
             }
         }
+    }
 
-        function toggleDayDropdown(event) {
-            console.log('toggleDayDropdown called');
-            event.stopPropagation();
-            const dropdownMenu = document.getElementById('dayDropdownMenu');
-            const deleteDaySelect = document.getElementById('deleteDaySelect');
-            document.querySelectorAll('.dropdown-menu').forEach(menu => {
-                if (menu !== dropdownMenu) menu.classList.remove('show');
-            });
-            document.querySelectorAll('select[id$="Select"]').forEach(select => {
-                if (select !== deleteDaySelect) select.style.display = 'none';
-            });
-            dropdownMenu.classList.toggle('show');
-            deleteDaySelect.style.display = 'none';
+    function toggleDayDropdown(event) {
+        console.log('toggleDayDropdown called');
+        event.stopPropagation();
+        const dropdownMenu = document.getElementById('dayDropdownMenu');
+        const deleteDaySelect = document.getElementById('deleteDaySelect');
+        document.querySelectorAll('.dropdown-menu').forEach(menu => {
+            if (menu !== dropdownMenu) menu.classList.remove('show');
+        });
+        document.querySelectorAll('select[id$="Select"]').forEach(select => {
+            if (select !== deleteDaySelect) select.style.display = 'none';
+        });
+        dropdownMenu.classList.toggle('show');
+        deleteDaySelect.style.display = 'none';
+    }
+
+    // Time Functions
+    function addNewTime(event) {
+        console.log('addNewTime called');
+        event.stopPropagation();
+        const newTime = prompt('Enter new time slot (e.g., 09:00-10:00):').trim();
+        if (!newTime.match(/^\d{2}:\d{2}-\d{2}:\d{2}$/)) {
+            alert('Please enter a valid time slot in the format HH:MM-HH:MM.');
+            return;
         }
+        if (times.includes(newTime)) {
+            alert('Time slot already exists.');
+            return;
+        }
+        times.push(newTime);
+        days.forEach(day => {
+            schedule[day][newTime] = {};
+            levels.forEach(level => {
+                schedule[day][newTime][level] = [];
+            });
+        });
+        updateTimeDropdown();
+        updateTable();
+        alert(`Time slot ${newTime} added successfully.`);
+        document.getElementById('timeDropdownMenu').classList.remove('show');
+    }
 
-        // Time Functions
-        function addNewTime(event) {
-            console.log('addNewTime called');
-            event.stopPropagation();
-            const newTime = prompt('Enter new time slot (e.g., 09:00-10:00):').trim();
-            if (!newTime.match(/^\d{2}:\d{2}-\d{2}:\d{2}$/)) {
-                alert('Please enter a valid time slot in the format HH:MM-HH:MM.');
+    function addBulkTimes(event) {
+        console.log('addBulkTimes called');
+        event.stopPropagation();
+        const input = prompt('Enter time slots separated by commas (e.g., 09:00-10:00,10:00-11:0012:00):').trim();
+        if (!input) {
+            alert('Input cannot be empty.');
+            return;
+        }
+        const newTimes = input.split(',').map(t => t.trim()).filter(t => t);
+        if (newTimes.length === 0) {
+            alert('No valid time slots provided.');
+            return;
+        }
+        let added = 0;
+        let skipped = 0;
+        newTimes.forEach(time => {
+            if (!time.match(/^\d{2}:\d{2}-\d{2}:\d{2}$/)) {
+                skipped++;
                 return;
             }
-            if (times.includes(newTime)) {
-                alert('Time slot already exists.');
+            if (times.includes(time)) {
+                skipped++;
                 return;
             }
-            times.push(newTime);
+            times.push(time);
             days.forEach(day => {
-                schedule[day][newTime] = {};
+                schedule[day][time] = {};
                 levels.forEach(level => {
-                    schedule[day][newTime][level] = [];
+                    schedule[day][time][level] = [];
                 });
+            });
+            added++;
+        });
+        updateTimeDropdown();
+        updateTable();
+        alert(`Added ${added} time slot(s). Skipped ${skipped} invalid or duplicate(s).`);
+        document.getElementById('timeDropdownMenu').classList.remove('show');
+    }
+
+    function deleteTime(event) {
+        console.log('deleteTime called');
+        event.stopPropagation();
+        const deleteTimeSelect = document.getElementById('deleteTimeSelect');
+        const time = deleteTimeSelect.value;
+        if (!time) {
+            alert('Please select a time slot to delete.');
+            return;
+        }
+        if (isTimeUsed(time)) {
+            alert('Cannot delete time slot because it is used in the schedule.');
+            return;
+        }
+        if (confirm(`Are you sure you want to delete ${time}?`)) {
+            times = times.filter(t => t !== time);
+            days.forEach(day => {
+                delete schedule[day][time];
             });
             updateTimeDropdown();
             updateTable();
-            alert(`Time slot ${newTime} added successfully.`);
-            document.getElementById('timeDropdownMenu').classList.remove('show');
-        }
-
-        function deleteTime(event) {
-            console.log('deleteTime called');
-            event.stopPropagation();
-            const deleteTimeSelect = document.getElementById('deleteTimeSelect');
-            const time = deleteTimeSelect.value;
-            if (!time) {
-                alert('Please select a time slot to delete.');
-                return;
-            }
-            if (isTimeUsed(time)) {
-                alert('Cannot delete time slot because it is used in the schedule.');
-                return;
-            }
-            if (confirm(`Are you sure you want to delete ${time}?`)) {
-                times = times.filter(t => t !== time);
-                days.forEach(day => {
-                    delete schedule[day][time];
-                });
-                updateTimeDropdown();
-                updateTable();
-                alert(`Time slot ${time} deleted successfully.`);
+            alert(`Time slot ${time} deleted successfully.`);
+            deleteTimeSelect.value = '';
+            if (times.length === 0) {
                 deleteTimeSelect.style.display = 'none';
-                deleteTimeSelect.value = '';
             }
         }
+    }
 
-        function toggleTimeDropdown(event) {
-            console.log('toggleTimeDropdown called');
-            event.stopPropagation();
-            const dropdownMenu = document.getElementById('timeDropdownMenu');
-            const deleteTimeSelect = document.getElementById('deleteTimeSelect');
-            document.querySelectorAll('.dropdown-menu').forEach(menu => {
-                if (menu !== dropdownMenu) menu.classList.remove('show');
-            });
-            document.querySelectorAll('select[id$="Select"]').forEach(select => {
-                if (select !== deleteTimeSelect) select.style.display = 'none';
-            });
-            dropdownMenu.classList.toggle('show');
-            deleteTimeSelect.style.display = 'none';
+    function toggleTimeDropdown(event) {
+        console.log('toggleTimeDropdown called');
+        event.stopPropagation();
+        const dropdownMenu = document.getElementById('timeDropdownMenu');
+        const deleteTimeSelect = document.getElementById('deleteTimeSelect');
+        document.querySelectorAll('.dropdown-menu').forEach(menu => {
+            if (menu !== dropdownMenu) menu.classList.remove('show');
+        });
+        document.querySelectorAll('select[id$="Select"]').forEach(select => {
+            if (select !== deleteTimeSelect) select.style.display = 'none';
+        });
+        dropdownMenu.classList.toggle('show');
+        deleteTimeSelect.style.display = 'none';
+    }
+
+    // Level Functions
+    function addNewLevel(event) {
+        console.log('addNewLevel called');
+        event.stopPropagation();
+        const newLevel = prompt('Enter new level name:').trim();
+        if (!newLevel) {
+            alert('Level name cannot be empty.');
+            return;
         }
+        if (levels.includes(newLevel)) {
+            alert('Level already exists.');
+            return;
+        }
+        levels.push(newLevel);
+        levelSubjects[newLevel] = [];
+        days.forEach(day => {
+            times.forEach(time => {
+                schedule[day][time][newLevel] = [];
+            });
+        });
+        updateLevelDropdown();
+        updateTableHeaders();
+        updateTable();
+        alert(`Level ${newLevel} added successfully.`);
+        document.getElementById('levelDropdownMenu').classList.remove('show');
+    }
 
-        // Level Functions
-        function addNewLevel(event) {
-            console.log('addNewLevel called');
-            event.stopPropagation();
-            const newLevel = prompt('Enter new level name:').trim();
-            if (!newLevel) {
-                alert('Level name cannot be empty.');
+    function addBulkLevels(event) {
+        console.log('addBulkLevels called');
+        event.stopPropagation();
+        const input = prompt('Enter levels separated by commas (e.g., Grade1,Grade2,Grade3):').trim();
+        if (!input) {
+            alert('Input cannot be empty.');
+            return;
+        }
+        const newLevels = input.split(',').map(l => l.trim()).filter(l => l);
+        if (newLevels.length === 0) {
+            alert('No valid levels provided.');
+            return;
+        }
+        let added = 0;
+        let skipped = 0;
+        newLevels.forEach(level => {
+            if (!level) return;
+            if (levels.includes(level)) {
+                skipped++;
                 return;
             }
-            if (levels.includes(newLevel)) {
-                alert('Level already exists.');
-                return;
-            }
-            levels.push(newLevel);
-            levelSubjects[newLevel] = [];
+            levels.push(level);
+            levelSubjects[level] = [];
             days.forEach(day => {
                 times.forEach(time => {
-                    schedule[day][time][newLevel] = [];
+                    schedule[day][time][level] = [];
+                });
+            });
+            added++;
+        });
+        updateLevelDropdown();
+        updateTableHeaders();
+        updateTable();
+        alert(`Added ${added} level(s). Skipped ${skipped} duplicate(s).`);
+        document.getElementById('levelDropdownMenu').classList.remove('show');
+    }
+
+    function deleteLevel(event) {
+        console.log('deleteLevel called');
+        event.stopPropagation();
+        const deleteLevelSelect = document.getElementById('deleteLevelSelect');
+        const level = deleteLevelSelect.value;
+        if (!level) {
+            alert('Please select a level to delete.');
+            return;
+        }
+        if (isLevelUsed(level)) {
+            alert('Cannot delete level because it has scheduled entries.');
+            return;
+        }
+        if (confirm(`Are you sure you want to delete ${level}?`)) {
+            levels = levels.filter(l => l !== level);
+            delete levelSubjects[level];
+            days.forEach(day => {
+                times.forEach(time => {
+                    delete schedule[day][time][level];
                 });
             });
             updateLevelDropdown();
+            updateClassDropdown();
             updateTableHeaders();
             updateTable();
-            alert(`Level ${newLevel} added successfully.`);
-            document.getElementById('levelDropdownMenu').classList.remove('show');
-        }
-
-        function deleteLevel(event) {
-            console.log('deleteLevel called');
-            event.stopPropagation();
-            const deleteLevelSelect = document.getElementById('deleteLevelSelect');
-            const level = deleteLevelSelect.value;
-            if (!level) {
-                alert('Please select a level to delete.');
-                return;
-            }
-            if (isLevelUsed(level)) {
-                alert('Cannot delete level because it has scheduled entries.');
-                return;
-            }
-            if (confirm(`Are you sure you want to delete ${level}?`)) {
-                levels = levels.filter(l => l !== level);
-                delete levelSubjects[level];
-                days.forEach(day => {
-                    times.forEach(time => {
-                        delete schedule[day][time][level];
-                    });
-                });
-                updateLevelDropdown();
-                updateClassDropdown();
-                updateTableHeaders();
-                updateTable();
-                alert(`Level ${level} deleted successfully.`);
+            alert(`Level ${level} deleted successfully.`);
+            deleteLevelSelect.value = '';
+            if (levels.length === 0) {
                 deleteLevelSelect.style.display = 'none';
-                deleteLevelSelect.value = '';
             }
         }
+    }
 
-        function toggleLevelDropdown(event) {
-            console.log('toggleLevelDropdown called');
-            event.stopPropagation();
-            const dropdownMenu = document.getElementById('levelDropdownMenu');
-            const deleteLevelSelect = document.getElementById('deleteLevelSelect');
-            document.querySelectorAll('.dropdown-menu').forEach(menu => {
-                if (menu !== dropdownMenu) menu.classList.remove('show');
-            });
-            document.querySelectorAll('select[id$="Select"]').forEach(select => {
-                if (select !== deleteLevelSelect) select.style.display = 'none';
-            });
-            dropdownMenu.classList.toggle('show');
-            deleteLevelSelect.style.display = 'none';
+    function toggleLevelDropdown(event) {
+        console.log('toggleLevelDropdown called');
+        event.stopPropagation();
+        const dropdownMenu = document.getElementById('levelDropdownMenu');
+        const deleteLevelSelect = document.getElementById('deleteLevelSelect');
+        document.querySelectorAll('.dropdown-menu').forEach(menu => {
+            if (menu !== dropdownMenu) menu.classList.remove('show');
+        });
+        document.querySelectorAll('select[id$="Select"]').forEach(select => {
+            if (select !== deleteLevelSelect) select.style.display = 'none';
+        });
+        dropdownMenu.classList.toggle('show');
+        deleteLevelSelect.style.display = 'none';
+    }
+
+    // Subject Functions
+    function addNewSubject(event) {
+        console.log('addNewSubject called');
+        event.stopPropagation();
+        const levelSelect = document.getElementById('level');
+        const level = levelSelect.value;
+        if (!level) {
+            alert('Please select a level first.');
+            return;
         }
+        const newSubject = prompt(`Enter new subject for ${level}:`).trim();
+        if (!newSubject) {
+            alert('Subject name cannot be empty.');
+            return;
+        }
+        if (levelSubjects[level].includes(newSubject)) {
+            alert('Subject already exists for this level.');
+            return;
+        }
+        levelSubjects[level].push(newSubject);
+        updateClassDropdown();
+        updateTable();
+        alert(`Subject ${newSubject} added to ${level} successfully.`);
+        document.getElementById('subjectDropdownMenu').classList.remove('show');
+    }
 
-        // Subject Functions
-        function addNewSubject(event) {
-            console.log('addNewSubject called');
-            event.stopPropagation();
-            const levelSelect = document.getElementById('level');
-            const level = levelSelect.value;
-            if (!level) {
-                alert('Please select a level first.');
+    function addBulkSubjects(event) {
+        console.log('addBulkSubjects called');
+        event.stopPropagation();
+        const levelSelect = document.getElementById('level');
+        const level = levelSelect.value;
+        if (!level) {
+            alert('Please select a level first.');
+            return;
+        }
+        const input = prompt(`Enter subjects for ${level} separated by commas (e.g., Math,Science,English):`).trim();
+        if (!input) {
+            alert('Input cannot be empty.');
+            return;
+        }
+        const newSubjects = input.split(',').map(s => s.trim()).filter(s => s);
+        if (newSubjects.length === 0) {
+            alert('No valid subjects provided.');
+            return;
+        }
+        let added = 0;
+        let skipped = 0;
+        newSubjects.forEach(subject => {
+            if (!subject) return;
+            if (levelSubjects[level].includes(subject)) {
+                skipped++;
                 return;
             }
-            const newSubject = prompt(`Enter new subject for ${level}:`).trim();
-            if (!newSubject) {
-                alert('Subject name cannot be empty.');
-                return;
-            }
-            if (levelSubjects[level].includes(newSubject)) {
-                alert('Subject already exists for this level.');
-                return;
-            }
-            levelSubjects[level].push(newSubject);
+            levelSubjects[level].push(subject);
+            added++;
+        });
+        updateClassDropdown();
+        updateTable();
+        alert(`Added ${added} subject(s) to ${level}. Skipped ${skipped} duplicate(s).`);
+        document.getElementById('subjectDropdownMenu').classList.remove('show');
+    }
+
+    function deleteSubject(event) {
+        console.log('deleteSubject called');
+        event.stopPropagation();
+        const levelSelect = document.getElementById('level');
+        const level = levelSelect.value;
+        if (!level) {
+            alert('Please select a level first.');
+            return;
+        }
+        const deleteSubjectSelect = document.getElementById('deleteSubjectSelect');
+        const subject = deleteSubjectSelect.value;
+        if (!subject) {
+            alert('Please select a subject to delete.');
+            return;
+        }
+        if (isSubjectUsed(level, subject)) {
+            alert('Cannot delete subject because it is assigned in the schedule.');
+            return;
+        }
+        if (confirm(`Are you sure you want to delete ${subject} from ${level}?`)) {
+            levelSubjects[level] = levelSubjects[level].filter(s => s !== subject);
             updateClassDropdown();
             updateTable();
-            alert(`Subject ${newSubject} added to ${level} successfully.`);
-            document.getElementById('subjectDropdownMenu').classList.remove('show');
-        }
-
-        function deleteSubject(event) {
-            console.log('deleteSubject called');
-            event.stopPropagation();
-            const levelSelect = document.getElementById('level');
-            const level = levelSelect.value;
-            if (!level) {
-                alert('Please select a level first.');
-                return;
-            }
-            const deleteSubjectSelect = document.getElementById('deleteSubjectSelect');
-            const subject = deleteSubjectSelect.value;
-            if (!subject) {
-                alert('Please select a subject to delete.');
-                return;
-            }
-            if (isSubjectUsed(level, subject)) {
-                alert('Cannot delete subject because it is assigned in the schedule.');
-                return;
-            }
-            if (confirm(`Are you sure you want to delete ${subject} from ${level}?`)) {
-                levelSubjects[level] = levelSubjects[level].filter(s => s !== subject);
-                updateClassDropdown();
-                updateTable();
-                alert(`Subject ${subject} deleted from ${level} successfully.`);
+            alert(`Subject ${subject} deleted from ${level} successfully.`);
+            deleteSubjectSelect.value = '';
+            if (levelSubjects[level].length === 0) {
                 deleteSubjectSelect.style.display = 'none';
-                deleteSubjectSelect.value = '';
             }
         }
+    }
 
-        function toggleSubjectDropdown(event) {
-            console.log('toggleSubjectDropdown called');
-            event.stopPropagation();
-            const dropdownMenu = document.getElementById('subjectDropdownMenu');
-            const deleteSubjectSelect = document.getElementById('deleteSubjectSelect');
-            document.querySelectorAll('.dropdown-menu').forEach(menu => {
-                if (menu !== dropdownMenu) menu.classList.remove('show');
-            });
-            document.querySelectorAll('select[id$="Select"]').forEach(select => {
-                if (select !== deleteSubjectSelect) select.style.display = 'none';
-            });
-            dropdownMenu.classList.toggle('show');
-            deleteSubjectSelect.style.display = 'none';
-        }
+    function toggleSubjectDropdown(event) {
+        console.log('toggleSubjectDropdown called');
+        event.stopPropagation();
+        const dropdownMenu = document.getElementById('subjectDropdownMenu');
+        const deleteSubjectSelect = document.getElementById('deleteSubjectSelect');
+        document.querySelectorAll('.dropdown-menu').forEach(menu => {
+            if (menu !== dropdownMenu) menu.classList.remove('show');
+        });
+        document.querySelectorAll('select[id$="Select"]').forEach(select => {
+            if (select !== deleteSubjectSelect) select.style.display = 'none';
+        });
+        dropdownMenu.classList.toggle('show');
+        deleteSubjectSelect.style.display = 'none';
+    }
 
-        // Check for duplicate teachers
-        function checkDuplicates(day, time, newTeacher = null, newLevel = null) {
-            if (!schedule[day]?.[time]) return '';
-            const teacherCounts = {};
-            levels.forEach(level => {
-                if (schedule[day][time][level]) {
-                    schedule[day][time][level].forEach(entry => {
-                        teacherCounts[entry.teacher] = (teacherCounts[entry.teacher] || 0) + 1;
-                    });
-                }
-            });
-            if (newTeacher && newLevel) {
-                teacherCounts[newTeacher] = (teacherCounts[newTeacher] || 0) + 1;
+    // Check for duplicate teachers
+    function checkDuplicates(day, time, newTeacher = null, newLevel = null) {
+        if (!schedule[day]?.[time]) return '';
+        const teacherCounts = {};
+        levels.forEach(level => {
+            if (schedule[day][time][level]) {
+                schedule[day][time][level].forEach(entry => {
+                    teacherCounts[entry.teacher] = (teacherCounts[entry.teacher] || 0) + 1;
+                });
             }
-            const duplicates = Object.keys(teacherCounts).filter(teacher => teacherCounts[teacher] > 1);
-            return duplicates.length > 0 ? `Duplicate Teachers: ${duplicates.join(', ')}` : '';
+        });
+        if (newTeacher && newLevel) {
+            teacherCounts[newTeacher] = (teacherCounts[newTeacher] || 0) + 1;
+        }
+        const duplicates = Object.keys(teacherCounts).filter(teacher => teacherCounts[teacher] > 1);
+        return duplicates.length > 0 ? `Duplicate Teachers: ${duplicates.join(', ')}` : '';
+    }
+
+    function addTeacher() {
+        console.log('addTeacher called');
+        const name = document.getElementById('teacherName').value;
+        const day = document.getElementById('day').value;
+        const time = document.getElementById('time').value;
+        const className = document.getElementById('class').value;
+        const level = document.getElementById('level').value;
+
+        if (!name || !day || !time || !level || !className) {
+            alert('Please select all required fields: teacher, day, time, level, and subject.');
+            return;
         }
 
-        function addTeacher() {
-            console.log('addTeacher called');
-            const name = document.getElementById('teacherName').value;
-            const day = document.getElementById('day').value;
-            const time = document.getElementById('time').value;
-            const className = document.getElementById('class').value;
-            const level = document.getElementById('level').value;
+        if (!schedule[day]) schedule[day] = {};
+        if (!schedule[day][time]) schedule[day][time] = {};
+        if (!schedule[day][time][level]) schedule[day][time][level] = [];
 
-            if (!name || !day || !time || !level || !className) {
-                alert('Please select all required fields: teacher, day, time, level, and subject.');
+        const duplicateMessage = checkDuplicates(day, time, name, level);
+        if (duplicateMessage) {
+            alert(`Warning: ${duplicateMessage} on ${day} at ${time.replace(/(\d{2}:\d{2})-(\d{2}:\d{2})/, (match, start, end) => {
+                const startHour = parseTeacher = parseInt(start.split(':')[0]);
+                const endHour = parseInt(end.split(':')[0]);
+                const startPeriod = startHour >= 12 ? 'PM' : 'AM';
+                const endPeriod = endHour >= 12 ? 'PM' : 'AM';
+                const formatStart = `${startHour > 12 ? startHour - 12 : startHour || 12}:${start.split(':')[1]}`;
+                const formatEnd = `${endHour > 12 ? endHour - 12 : endHour || 12}:${end.split(':')[1]}`;
+                return `${formatStart}-${formatEnd} ${startPeriod}`;
+            })}.`);
+        }
+
+        schedule[day][time][level].push({ teacher: name, class: className });
+        updateTable();
+        document.getElementById('teacherName').value = '';
+        document.getElementById('day').value = '';
+        document.getElementById('time').value = '';
+        document.getElementById('level').value = '';
+        document.getElementById('class').innerHTML = '<option value="" disabled selected>No subjects added</option>';
+    }
+
+    function removeTeacher(day, time, level, index) {
+        console.log('removeTeacher called', { day, time, level, index });
+        if (schedule[day]?.[time]?.[level]) {
+            schedule[day][time][level].splice(index, 1);
+            updateTable();
+        }
+    }
+
+    function editTeacher(day, time, level, index) {
+        console.log('editTeacher called', { day, time, level, index });
+        if (!schedule[day]?.[time]?.[level]) return;
+        const current = schedule[day][time][level][index];
+        const newName = prompt('Enter new teacher name:', current.teacher);
+        const newClass = prompt('Enter new subject (choose from: ' + (levelSubjects[level] || []).join(', ') + '):', current.class);
+
+        if (newName && newName.trim() && newClass && newClass.trim()) {
+            if (!levelSubjects[level].includes(newClass)) {
+                alert('Invalid subject for the selected level. Please choose from: ' + (levelSubjects[level] || []).join(', '));
                 return;
             }
-
-            if (!schedule[day]) schedule[day] = {};
-            if (!schedule[day][time]) schedule[day][time] = {};
-            if (!schedule[day][time][level]) schedule[day][time][level] = [];
-
-            const duplicateMessage = checkDuplicates(day, time, name, level);
+            const duplicateMessage = checkDuplicates(day, time, newName, level);
             if (duplicateMessage) {
                 alert(`Warning: ${duplicateMessage} on ${day} at ${time.replace(/(\d{2}:\d{2})-(\d{2}:\d{2})/, (match, start, end) => {
                     const startHour = parseInt(start.split(':')[0]);
@@ -1195,366 +1465,234 @@
                     return `${formatStart}-${formatEnd} ${startPeriod}`;
                 })}.`);
             }
-
-            schedule[day][time][level].push({ teacher: name, class: className });
+            schedule[day][time][level][index] = { 
+                teacher: newName.trim(), 
+                class: newClass.trim() 
+            };
             updateTable();
-            document.getElementById('teacherName').value = '';
-            document.getElementById('day').value = '';
-            document.getElementById('time').value = '';
-            document.getElementById('level').value = '';
-            document.getElementById('class').innerHTML = '<option value="" disabled selected>No subjects added</option>';
+        } else {
+            alert('Teacher name and subject must both be provided.');
+        }
+    }
+
+    function updateTable() {
+        console.log('updateTable called');
+        const tbody = document.getElementById('scheduleBody');
+        tbody.innerHTML = '';
+
+        if (days.length === 0 || times.length === 0 || levels.length === 0) {
+            tbody.innerHTML = '<tr><td colspan="' + (levels.length + 2) + '">Please add days, times, and levels to create a schedule.</td></tr>';
+            return;
         }
 
-        function removeTeacher(day, time, level, index) {
-            console.log('removeTeacher called', { day, time, level, index });
-            if (schedule[day]?.[time]?.[level]) {
-                schedule[day][time][level].splice(index, 1);
-                updateTable();
-            }
-        }
+        let rowCount = 0;
+        days.forEach(day => {
+            times.forEach(time => {
+                const row = document.createElement('tr');
+                const displayTime = time.replace(/(\d{2}:\d{2})-(\d{2}:\d{2})/, (match, start, end) => {
+                    const startHour = parseInt(start.split(':')[0]);
+                    const endHour = parseInt(end.split(':')[0]);
+                    const startPeriod = startHour >= 12 ? 'PM' : 'AM';
+                    const endPeriod = endHour >= 12 ? 'PM' : 'AM';
+                    const formatStart = `${startHour > 12 ? startHour - 12 : startHour || 12}:${start.split(':')[1]}`;
+                    const formatEnd = `${endHour > 12 ? endHour - 12 : endHour || 12}:${end.split(':')[1]}`;
+                    return `${formatStart}-${formatEnd} ${startPeriod}`;
+                });
+                row.innerHTML = `<td>${day}</td><td>${displayTime}</td>`;
 
-        function editTeacher(day, time, level, index) {
-            console.log('editTeacher called', { day, time, level, index });
-            if (!schedule[day]?.[time]?.[level]) return;
-            const current = schedule[day][time][level][index];
-            const newName = prompt('Enter new teacher name:', current.teacher);
-            const newClass = prompt('Enter new subject (choose from: ' + (levelSubjects[level] || []).join(', ') + '):', current.class);
+                let hasMatch = false;
+                const searchLower = currentSearch.toLowerCase();
+                const levelMatches = levels.filter(level => level.toLowerCase().includes(searchLower));
+                let cellContentArray = [];
 
-            if (newName && newName.trim() && newClass && newClass.trim()) {
-                if (!levelSubjects[level].includes(newClass)) {
-                    alert('Invalid subject for the selected level. Please choose from: ' + (levelSubjects[level] || []).join(', '));
-                    return;
+                levels.forEach(level => {
+                    const entries = schedule[day]?.[time]?.[level] || [];
+                    const cellContent = entries.map((entry, index) => {
+                        const content = `${entry.teacher} (${entry.class}) <button class="edit-btn" onclick="editTeacher('${day}', '${time}', '${level}', ${index})">Edit</button> <button class="remove-btn" onclick="removeTeacher('${day}', '${time}', '${level}', ${index})">Remove</button>`;
+                        if (searchLower && (
+                            entry.teacher.toLowerCase().includes(searchLower) ||
+                            entry.class.toLowerCase().includes(searchLower) ||
+                            level.toLowerCase().includes(searchLower)
+                        )) {
+                            hasMatch = true;
+                        }
+                        return content;
+                    }).join('<br>');
+                    cellContentArray.push({ level, content: cellContent || '' });
+                });
+
+                if (searchLower && !hasMatch && !levelMatches.length) {
+                    row.style.display = 'none';
+                } else {
+                    rowCount++;
+                    cellContentArray.forEach(cell => {
+                        row.innerHTML += `<td>${cell.content}</td>`;
+                    });
+                    tbody.appendChild(row);
                 }
-                const duplicateMessage = checkDuplicates(day, time, newName, level);
-                if (duplicateMessage) {
-                    alert(`Warning: ${duplicateMessage} on ${day} at ${time.replace(/(\d{2}:\d{2})-(\d{2}:\d{2})/, (match, start, end) => {
-                        const startHour = parseInt(start.split(':')[0]);
-                        const endHour = parseInt(end.split(':')[0]);
-                        const startPeriod = startHour >= 12 ? 'PM' : 'AM';
-                        const endPeriod = endHour >= 12 ? 'PM' : 'AM';
-                        const formatStart = `${startHour > 12 ? startHour - 12 : startHour || 12}:${start.split(':')[1]}`;
-                        const formatEnd = `${endHour > 12 ? endHour - 12 : endHour || 12}:${end.split(':')[1]}`;
-                        return `${formatStart}-${formatEnd} ${startPeriod}`;
-                    })}.`);
-                }
-                schedule[day][time][level][index] = { 
-                    teacher: newName.trim(), 
-                    class: newClass.trim() 
-                };
-                updateTable();
-            } else {
-                alert('Teacher name and subject must both be provided.');
-            }
+            });
+        });
+
+        if (rowCount === 0 && currentSearch) {
+            tbody.innerHTML = '<tr><td colspan="' + (levels.length + 2) + '">No results found for "' + currentSearch + '"</td></tr>';
         }
+    }
 
-        function updateTable() {
-            console.log('updateTable called');
-            const tbody = document.getElementById('scheduleBody');
-            tbody.innerHTML = '';
+    function filterTable() {
+        console.log('filterTable called');
+        currentSearch = document.getElementById('searchFilter').value.trim();
+        updateTable();
+    }
 
-            if (days.length === 0 || times.length === 0 || levels.length === 0) {
-                tbody.innerHTML = '<tr><td colspan="' + (levels.length + 2) + '">Please add days, times, and levels to create a schedule.</td></tr>';
+    function saveSchedule() {
+        console.log('saveSchedule called');
+        try {
+            const scheduleName = prompt('Enter a name for this schedule:').trim();
+            if (!scheduleName) {
+                alert('Schedule name cannot be empty.');
                 return;
             }
 
-            let rowCount = 0;
-            days.forEach(day => {
-                times.forEach(time => {
-                    const row = document.createElement('tr');
-                    const displayTime = time.replace(/(\d{2}:\d{2})-(\d{2}:\d{2})/, (match, start, end) => {
-                        const startHour = parseInt(start.split(':')[0]);
-                        const endHour = parseInt(end.split(':')[0]);
-                        const startPeriod = startHour >= 12 ? 'PM' : 'AM';
-                        const endPeriod = endHour >= 12 ? 'PM' : 'AM';
-                        const formatStart = `${startHour > 12 ? startHour - 12 : startHour || 12}:${start.split(':')[1]}`;
-                        const formatEnd = `${endHour > 12 ? endHour - 12 : endHour || 12}:${end.split(':')[1]}`;
-                        return `${formatStart}-${formatEnd} ${startPeriod}`;
-                    });
-                    row.innerHTML = `<td>${day}</td><td>${displayTime}</td>`;
-
-                    let hasMatch = false;
-                    const searchLower = currentSearch.toLowerCase();
-                    const levelMatches = levels.filter(level => level.toLowerCase().includes(searchLower));
-                    let cellContentArray = [];
-
-                    levels.forEach(level => {
-                        const entries = schedule[day]?.[time]?.[level] || [];
-                        const cellContent = entries.map((entry, index) => {
-                            const content = `${entry.teacher} (${entry.class}) <button class="edit-btn" onclick="editTeacher('${day}', '${time}', '${level}', ${index})">Edit</button> <button class="remove-btn" onclick="removeTeacher('${day}', '${time}', '${level}', ${index})">Remove</button>`;
-                            if (searchLower && (
-                                entry.teacher.toLowerCase().includes(searchLower) ||
-                                entry.class.toLowerCase().includes(searchLower) ||
-                                level.toLowerCase().includes(searchLower)
-                            )) {
-                                hasMatch = true;
-                            }
-                            return content;
-                        }).join('<br>');
-                        cellContentArray.push({ level, content: cellContent || '' });
-                    });
-
-                    if (searchLower && !hasMatch && !levelMatches.length) {
-                        row.style.display = 'none';
-                    } else {
-                        rowCount++;
-                        cellContentArray.forEach(cell => {
-                            row.innerHTML += `<td>${cell.content}</td>`;
-                        });
-                        tbody.appendChild(row);
-                    }
-                });
-            });
-
-            if (rowCount === 0 && currentSearch) {
-                tbody.innerHTML = '<tr><td colspan="' + (levels.length + 2) + '">No results found for "' + currentSearch + '"</td></tr>';
-            }
-        }
-
-        function filterTable() {
-            console.log('filterTable called');
-            currentSearch = document.getElementById('searchFilter').value.trim();
-            updateTable();
-        }
-
-        function saveSchedule() {
-            console.log('saveSchedule called');
-            try {
-                const scheduleName = prompt('Enter a name for this schedule:').trim();
-                if (!scheduleName) {
-                    alert('Schedule name cannot be empty.');
-                    return;
-                }
-
-                const schedules = JSON.parse(localStorage.getItem('mbjSchedules') || '[]');
-                const timestamp = new Date().toISOString();
-                const scheduleData = {
-                    name: scheduleName,
-                    timestamp: timestamp,
-                    schedule: schedule,
-                    teachers: teachers,
-                    days: days,
-                    times: times,
-                    levels: levels,
-                    levelSubjects: levelSubjects,
-                    schoolDetails: schoolDetails
-                };
-
-                // Check for duplicate name
-                if (schedules.some(s => s.name === scheduleName)) {
-                    if (!confirm(`A schedule named "${scheduleName}" already exists. Overwrite it?`)) {
-                        return;
-                    }
-                    schedules.splice(schedules.findIndex(s => s.name === scheduleName), 1);
-                }
-
-                schedules.push(scheduleData);
-                localStorage.setItem('mbjSchedules', JSON.stringify(schedules));
-
-                // Migrate old single schedule format if it exists
-                if (localStorage.getItem('mbjSchedule')) {
-                    const oldSchedule = {
-                        name: 'Legacy Schedule',
-                        timestamp: new Date().toISOString(),
-                        schedule: JSON.parse(localStorage.getItem('mbjSchedule') || '{}'),
-                        teachers: JSON.parse(localStorage.getItem('mbjTeachers') || '[]'),
-                        days: JSON.parse(localStorage.getItem('mbjDays') || '[]'),
-                        times: JSON.parse(localStorage.getItem('mbjTimes') || '[]'),
-                        levels: JSON.parse(localStorage.getItem('mbjLevels') || '[]'),
-                        levelSubjects: JSON.parse(localStorage.getItem('mbjLevelSubjects') || '{}'),
-                        schoolDetails: JSON.parse(localStorage.getItem('mbjSchoolDetails') || '{}')
-                    };
-                    schedules.push(oldSchedule);
-                    localStorage.setItem('mbjSchedules', JSON.stringify(schedules));
-                    localStorage.removeItem('mbjSchedule');
-                    localStorage.removeItem('mbjTeachers');
-                    localStorage.removeItem('mbjDays');
-                    localStorage.removeItem('mbjTimes');
-                    localStorage.removeItem('mbjLevels');
-                    localStorage.removeItem('mbjLevelSubjects');
-                    localStorage.removeItem('mbjSchoolDetails');
-                }
-
-                alert(`Schedule "${scheduleName}" saved successfully!`);
-            } catch (error) {
-                console.error('Error saving schedule:', error);
-                alert('Error saving schedule: ' + error.message);
-            }
-        }
-
-        function showLoadScheduleModal() {
-            console.log('showLoadScheduleModal called');
-            const modal = document.getElementById('loadScheduleModal');
-            const select = document.getElementById('savedSchedulesSelect');
-            select.innerHTML = '<option value="" disabled selected>No saved schedules</option>';
-
-            try {
-                const schedules = JSON.parse(localStorage.getItem('mbjSchedules') || '[]');
-                if (schedules.length === 0) {
-                    alert('No saved schedules found.');
-                    return;
-                }
-
-                schedules.forEach((sched, index) => {
-                    const option = document.createElement('option');
-                    option.value = index;
-                    option.textContent = `${sched.name} (${new Date(sched.timestamp).toLocaleString()})`;
-                    select.appendChild(option);
-                });
-
-                modal.classList.add('show');
-            } catch (error) {
-                console.error('Error loading schedules:', error);
-                alert('Error loading schedules: ' + error.message);
-            }
-        }
-
-        function loadSchedule(index) {
-            console.log('loadSchedule called with index:', index);
-            try {
-                const schedules = JSON.parse(localStorage.getItem('mbjSchedules') || '[]');
-                if (index < 0 || index >= schedules.length) {
-                    throw new Error('Invalid schedule index.');
-                }
-
-                const hasUnsavedChanges = days.length > 0 || times.length > 0 || teachers.length > 0 || 
-                                         levels.length > 0 || Object.keys(levelSubjects).length > 0 || 
-                                         Object.keys(schedule).length > 0;
-                if (hasUnsavedChanges && !confirm('Loading a saved schedule will overwrite your current schedule. Proceed?')) {
-                    console.log('Load cancelled due to unsaved changes');
-                    return;
-                }
-
-                const selectedSchedule = schedules[index];
-                schedule = selectedSchedule.schedule || {};
-                teachers = selectedSchedule.teachers || [];
-                days = selectedSchedule.days || [];
-                times = selectedSchedule.times || [];
-                levels = selectedSchedule.levels || [];
-                levelSubjects = selectedSchedule.levelSubjects || {};
-                schoolDetails = selectedSchedule.schoolDetails || { name: '', address: '', secRegNo: '', logo: '' };
-
-                // Validate schedule structure
-                const isValid = days.every(day => 
-                    times.every(time => 
-                        levels.every(level => 
-                            schedule[day]?.[time]?.[level] && Array.isArray(schedule[day][time][level])
-                        )
-                    )
-                );
-                if (!isValid) {
-                    throw new Error('Invalid schedule data structure. Some entries may be missing or corrupted.');
-                }
-
-                // Validate levelSubjects
-                const isValidSubjects = levels.every(level => levelSubjects[level] && Array.isArray(levelSubjects[level]));
-                if (!isValidSubjects) {
-                    throw new Error('Invalid subject data. Each level must have an associated subject array.');
-                }
-
-                // Validate schoolDetails
-                if (schoolDetails && (!schoolDetails.name || !schoolDetails.address)) {
-                    console.warn('School details incomplete; using defaults for missing fields.');
-                    schoolDetails.name = schoolDetails.name || '';
-                    schoolDetails.address = schoolDetails.address || '';
-                    schoolDetails.secRegNo = schoolDetails.secRegNo || '';
-                    schoolDetails.logo = schoolDetails.logo || '';
-                }
-
-                // Clear search filter
-                currentSearch = '';
-                document.getElementById('searchFilter').value = '';
-
-                // Update UI
-                updateTeacherDropdown();
-                updateDayDropdown();
-                updateTimeDropdown();
-                updateLevelDropdown();
-                updateClassDropdown();
-                updateTableHeaders();
-                updateTable();
-                updateSchoolHeader();
-
-                alert(`Schedule "${selectedSchedule.name}" loaded successfully! You can now edit the schedule.`);
-            } catch (error) {
-                console.error('Error loading schedule:', error);
-                alert('Error loading schedule: ' + error.message + '. Starting with a fresh schedule.');
-                createNewSchedule();
-            }
-        }
-
-        function deleteSchedule() {
-            console.log('deleteSchedule called');
-            try {
-                const select = document.getElementById('savedSchedulesSelect');
-                const index = parseInt(select.value);
-                if (isNaN(index)) {
-                    alert('Please select a schedule to delete.');
-                    return;
-                }
-
-                const schedules = JSON.parse(localStorage.getItem('mbjSchedules') || '[]');
-                if (index < 0 || index >= schedules.length) {
-                    throw new Error('Invalid schedule index.');
-                }
-
-                const scheduleName = schedules[index].name;
-                if (!confirm(`Are you sure you want to delete the schedule "${scheduleName}"? This action cannot be undone.`)) {
-                    console.log('Delete cancelled by user');
-                    return;
-                }
-
-                // Remove the selected schedule
-                schedules.splice(index, 1);
-                localStorage.setItem('mbjSchedules', JSON.stringify(schedules));
-
-                // Update the dropdown
-                select.innerHTML = '<option value="" disabled selected>No saved schedules</option>';
-                if (schedules.length > 0) {
-                    schedules.forEach((sched, idx) => {
-                        const option = document.createElement('option');
-                        option.value = idx;
-                        option.textContent = `${sched.name} (${new Date(sched.timestamp).toLocaleString()})`;
-                        select.appendChild(option);
-                    });
-                } else {
-                    // Close modal if no schedules remain
-                    document.getElementById('loadScheduleModal').classList.remove('show');
-                    alert('All schedules have been deleted.');
-                }
-
-                alert(`Schedule "${scheduleName}" deleted successfully.`);
-            } catch (error) {
-                console.error('Error deleting schedule:', error);
-                alert('Error deleting schedule: ' + error.message);
-            }
-        }
-
-        function createNewSchedule() {
-            console.log('createNewSchedule called');
-            // Reset in-memory data
-            schedule = {};
-            days = [];
-            times = [];
-            teachers = [];
-            levels = [];
-            levelSubjects = {};
-            schoolDetails = {
-                name: '',
-                address: '',
-                secRegNo: '',
-                logo: ''
+            const schedules = JSON.parse(localStorage.getItem('mbjSchedules') || '[]');
+            const timestamp = new Date().toISOString();
+            const scheduleData = {
+                name: scheduleName,
+                timestamp: timestamp,
+                schedule: schedule,
+                teachers: teachers,
+                days: days,
+                times: times,
+                levels: levels,
+                levelSubjects: levelSubjects,
+                schoolDetails: schoolDetails
             };
 
-            // Reset form inputs
-            document.getElementById('teacherName').value = '';
-            document.getElementById('day').value = '';
-            document.getElementById('time').value = '';
-            document.getElementById('level').value = '';
-            document.getElementById('class').innerHTML = '<option value="" disabled selected>No subjects added</option>';
-            document.getElementById('searchFilter').value = '';
-            currentSearch = '';
+            // Check for duplicate name
+            if (schedules.some(s => s.name === scheduleName)) {
+                if (!confirm(`A schedule named "${scheduleName}" already exists. Overwrite it?`)) {
+                    return;
+                }
+                schedules.splice(schedules.findIndex(s => s.name === scheduleName), 1);
+            }
 
-            // Update dropdowns and table
+            schedules.push(scheduleData);
+            localStorage.setItem('mbjSchedules', JSON.stringify(schedules));
+
+            // Migrate old single schedule format if it exists
+            if (localStorage.getItem('mbjSchedule')) {
+                const oldSchedule = {
+                    name: 'Legacy Schedule',
+                    timestamp: new Date().toISOString(),
+                    schedule: JSON.parse(localStorage.getItem('mbjSchedule') || '{}'),
+                    teachers: JSON.parse(localStorage.getItem('mbjTeachers') || '[]'),
+                    days: JSON.parse(localStorage.getItem('mbjDays') || '[]'),
+                    times: JSON.parse(localStorage.getItem('mbjTimes') || '[]'),
+                    levels: JSON.parse(localStorage.getItem('mbjLevels') || '[]'),
+                    levelSubjects: JSON.parse(localStorage.getItem('mbjLevelSubjects') || '{}'),
+                    schoolDetails: JSON.parse(localStorage.getItem('mbjSchoolDetails') || '{}')
+                };
+                schedules.push(oldSchedule);
+                localStorage.setItem('mbjSchedules', JSON.stringify(schedules));
+                localStorage.removeItem('mbjSchedule');
+                localStorage.removeItem('mbjTeachers');
+                localStorage.removeItem('mbjDays');
+                localStorage.removeItem('mbjTimes');
+                localStorage.removeItem('mbjLevels');
+                localStorage.removeItem('mbjLevelSubjects');
+                localStorage.removeItem('mbjSchoolDetails');
+            }
+
+            alert(`Schedule "${scheduleName}" saved successfully!`);
+        } catch (error) {
+            console.error('Error saving schedule:', error);
+            alert('Error saving schedule: ' + error.message);
+        }
+    }
+
+    function showLoadScheduleModal() {
+        console.log('showLoadScheduleModal called');
+        const modal = document.getElementById('loadScheduleModal');
+        const select = document.getElementById('savedSchedulesSelect');
+        select.innerHTML = '<option value="" disabled selected>No saved schedules</option>';
+
+        try {
+            const schedules = JSON.parse(localStorage.getItem('mbjSchedules') || '[]');
+            if (schedules.length === 0) {
+                alert('No saved schedules found.');
+                return;
+            }
+
+            schedules.forEach((sched, index) => {
+                const option = document.createElement('option');
+                option.value = index;
+                option.textContent = `${sched.name} (${new Date(sched.timestamp).toLocaleString()})`;
+                select.appendChild(option);
+            });
+
+            modal.classList.add('show');
+        } catch (error) {
+            console.error('Error loading schedules:', error);
+            alert('Error loading schedules: ' + error.message);
+        }
+    }
+
+    function loadSchedule(index) {
+        console.log('loadSchedule called with index:', index);
+        try {
+            const schedules = JSON.parse(localStorage.getItem('mbjSchedules') || '[]');
+            if (index < 0 || index >= schedules.length) {
+                throw new Error('Invalid schedule index.');
+            }
+
+            const hasUnsavedChanges = days.length > 0 || times.length > 0 || teachers.length > 0 || 
+                                     levels.length > 0 || Object.keys(levelSubjects).length > 0 || 
+                                     Object.keys(schedule).length > 0;
+            if (hasUnsavedChanges && !confirm('Loading a saved schedule will overwrite your current schedule. Proceed?')) {
+                console.log('Load cancelled due to unsaved changes');
+                return;
+            }
+
+            const selectedSchedule = schedules[index];
+            schedule = selectedSchedule.schedule || {};
+            teachers = selectedSchedule.teachers || [];
+            days = selectedSchedule.days || [];
+            times = selectedSchedule.times || [];
+            levels = selectedSchedule.levels || [];
+            levelSubjects = selectedSchedule.levelSubjects || {};
+            schoolDetails = selectedSchedule.schoolDetails || { name: '', address: '', secRegNo: '', logo: '' };
+
+            // Validate schedule structure
+            const isValid = days.every(day => 
+                times.every(time => 
+                    levels.every(level => 
+                        schedule[day]?.[time]?.[level] && Array.isArray(schedule[day][time][level])
+                    )
+                )
+            );
+            if (!isValid) {
+                throw new Error('Invalid schedule data structure. Some entries may be missing or corrupted.');
+            }
+
+            // Validate levelSubjects
+            const isValidSubjects = levels.every(level => levelSubjects[level] && Array.isArray(levelSubjects[level]));
+            if (!isValidSubjects) {
+                throw new Error('Invalid subject data. Each level must have an associated subject array.');
+            }
+
+            // Validate schoolDetails
+            if (schoolDetails && (!schoolDetails.name || !schoolDetails.address)) {
+                console.warn('School details incomplete; using defaults for missing fields.');
+                schoolDetails.name = schoolDetails.name || '';
+                schoolDetails.address = schoolDetails.address || '';
+                schoolDetails.secRegNo = schoolDetails.secRegNo || '';
+                schoolDetails.logo = schoolDetails.logo || '';
+            }
+
+            // Clear search filter
+            currentSearch = '';
+            document.getElementById('searchFilter').value = '';
+
+            // Update UI
             updateTeacherDropdown();
             updateDayDropdown();
             updateTimeDropdown();
@@ -1564,393 +1702,504 @@
             updateTable();
             updateSchoolHeader();
 
-            alert('New schedule created. You can start adding teachers, days, times, levels, and subjects.');
+            alert(`Schedule "${selectedSchedule.name}" loaded successfully! You can now edit the schedule.`);
+        } catch (error) {
+            console.error('Error loading schedule:', error);
+            alert('Error loading schedule: ' + error.message + '. Starting with a fresh schedule.');
+            createNewSchedule();
         }
+    }
 
-        function printSchedule() {
-            console.log('printSchedule called');
-            try {
-                let isEmpty = true;
-                days.forEach(day => {
-                    times.forEach(time => {
-                        levels.forEach(level => {
-                            if (schedule[day]?.[time]?.[level]?.length > 0) {
-                                isEmpty = false;
-                            }
-                        });
+    function deleteSchedule() {
+        console.log('deleteSchedule called');
+        try {
+            const select = document.getElementById('savedSchedulesSelect');
+            const index = parseInt(select.value);
+            if (isNaN(index)) {
+                alert('Please select a schedule to delete.');
+                return;
+            }
+
+            const schedules = JSON.parse(localStorage.getItem('mbjSchedules') || '[]');
+            if (index < 0 || index >= schedules.length) {
+                throw new Error('Invalid schedule index.');
+            }
+
+            const scheduleName = schedules[index].name;
+            if (!confirm(`Are you sure you want to delete the schedule "${scheduleName}"? This action cannot be undone.`)) {
+                console.log('Delete cancelled by user');
+                return;
+            }
+
+            // Remove the selected schedule
+            schedules.splice(index, 1);
+            localStorage.setItem('mbjSchedules', JSON.stringify(schedules));
+
+            // Update the dropdown
+            select.innerHTML = '<option value="" disabled selected>No saved schedules</option>';
+            if (schedules.length > 0) {
+                schedules.forEach((sched, idx) => {
+                    const option = document.createElement('option');
+                    option.value = idx;
+                    option.textContent = `${sched.name} (${new Date(sched.timestamp).toLocaleString()})`;
+                    select.appendChild(option);
+                });
+            } else {
+                // Close modal if no schedules remain
+                document.getElementById('loadScheduleModal').classList.remove('show');
+                alert('All schedules have been deleted.');
+            }
+
+            alert(`Schedule "${scheduleName}" deleted successfully.`);
+        } catch (error) {
+            console.error('Error deleting schedule:', error);
+            alert('Error deleting schedule: ' + error.message);
+        }
+    }
+
+    function createNewSchedule() {
+        console.log('createNewSchedule called');
+        // Reset in-memory data
+        schedule = {};
+        days = [];
+        times = [];
+        teachers = [];
+        levels = [];
+        levelSubjects = {};
+        schoolDetails = {
+            name: '',
+            address: '',
+            secRegNo: '',
+            logo: ''
+        };
+
+        // Reset form inputs
+        document.getElementById('teacherName').value = '';
+        document.getElementById('day').value = '';
+        document.getElementById('time').value = '';
+        document.getElementById('level').value = '';
+        document.getElementById('class').innerHTML = '<option value="" disabled selected>No subjects added</option>';
+        document.getElementById('searchFilter').value = '';
+        currentSearch = '';
+
+        // Update dropdowns and table
+        updateTeacherDropdown();
+        updateDayDropdown();
+        updateTimeDropdown();
+        updateLevelDropdown();
+        updateClassDropdown();
+        updateTableHeaders();
+        updateTable();
+        updateSchoolHeader();
+
+        alert('New schedule created. You can start adding teachers, days, times, levels, and subjects.');
+    }
+
+    function printSchedule() {
+        console.log('printSchedule called');
+        try {
+            let isEmpty = true;
+            days.forEach(day => {
+                times.forEach(time => {
+                    levels.forEach(level => {
+                        if (schedule[day]?.[time]?.[level]?.length > 0) {
+                            isEmpty = false;
+                        }
                     });
                 });
-                if (isEmpty) {
-                    alert('The schedule is empty. Please add some entries before printing.');
-                    return;
-                }
-
-                if (!schoolDetails.name || !schoolDetails.address) {
-                    alert('Please enter school name and address before printing.');
-                    return;
-                }
-
-                updateTable();
-                updateSchoolHeader();
-                if (levels.length > 10) {
-                    const table = document.getElementById('scheduleTable');
-                    table.classList.add('wide-table');
-                    alert('The schedule has many levels, which may not fit well on a single page. Consider saving as a PDF or reducing the number of levels.');
-                }
-
-                window.requestAnimationFrame(() => {
-                    window.print();
-                    const table = document.getElementById('scheduleTable');
-                    table.classList.remove('wide-table');
-                });
-            } catch (error) {
-                console.error('Error preparing schedule for print:', error);
-                alert('Error preparing schedule for print: ' + error.message);
-            }
-        }
-
-        function saveToGallery() {
-            console.log('saveToGallery called');
-            if (typeof html2canvas === 'undefined') {
-                console.error('html2canvas library not loaded.');
-                alert('Error: Image capture library failed to load. Please check your internet connection and try again.');
+            });
+            if (isEmpty) {
+                alert('The schedule is empty. Please add some entries before printing.');
                 return;
             }
-            try {
-                const table = document.getElementById('scheduleTable');
-                if (!table) {
-                    console.error('Schedule table not found.');
-                    alert('Error: Schedule table not found.');
-                    return;
-                }
-                html2canvas(table, {
-                    scale: 2,
-                    useCORS: true,
-                    width: table.scrollWidth,
-                    windowWidth: table.scrollWidth
-                }).then(canvas => {
-                    const link = document.createElement('a');
-                    link.href = canvas.toDataURL('image/png');
-                    link.download = 'schedule.png';
-                    link.click();
-                    console.log('Image saved successfully.');
-                }).catch(error => {
-                    console.error('Error capturing table as image:', error);
-                    alert('Error capturing table as image: ' + error.message);
-                });
-            } catch (error) {
-                console.error('Error saving to gallery:', error);
-                alert('Error saving to gallery: ' + error.message);
-            }
-        }
 
-        // Notice Modal Logic
-        function handleNoticeModal() {
-            console.log('handleNoticeModal called');
-            const modal = document.getElementById('noticeModal');
-            const proceedButton = document.getElementById('proceedButton');
-            const checkboxes = document.querySelectorAll('.instruction-checkbox');
-
-            // Show modal on page load
-            modal.classList.add('show');
-
-            // Function to check if all checkboxes are checked
-            function checkAllCheckboxes() {
-                const allChecked = Array.from(checkboxes).every(checkbox => checkbox.checked);
-                proceedButton.disabled = !allChecked;
+            if (!schoolDetails.name || !schoolDetails.address) {
+                alert('Please enter school name and address before printing.');
+                return;
             }
 
-            // Add event listeners to checkboxes
-            checkboxes.forEach(checkbox => {
-                checkbox.addEventListener('change', () => {
-                    console.log(`Checkbox ${checkbox.id} changed to ${checkbox.checked}`);
-                    checkAllCheckboxes();
-                });
-            });
-
-            // Handle Proceed button click
-            proceedButton.addEventListener('click', () => {
-                if (!proceedButton.disabled) {
-                    console.log('Proceed button clicked');
-                    modal.classList.remove('show');
-                }
-            });
-        }
-
-        document.addEventListener('DOMContentLoaded', function() {
-            console.log('DOMContentLoaded fired');
-            // Initialize notice modal
-            handleNoticeModal();
-
-            updateTeacherDropdown();
-            updateDayDropdown();
-            updateTimeDropdown();
-            updateLevelDropdown();
-            updateTableHeaders();
             updateTable();
             updateSchoolHeader();
-
-            // School Dropdown
-            const schoolDropdownButton = document.getElementById('schoolDropdown');
-            const schoolForm = document.getElementById('schoolForm');
-
-            if (!schoolDropdownButton || !schoolForm) {
-                console.error('School dropdown elements not found:', {
-                    schoolDropdownButton: !!schoolDropdownButton,
-                    schoolForm: !!schoolForm
-                });
-                alert('Error: School dropdown elements not found. Please check the page.');
-                return;
+            if (levels.length > 10) {
+                const table = document.getElementById('scheduleTable');
+                table.classList.add('wide-table');
+                alert('The schedule has many levels, which may not fit well on a single page. Consider saving as a PDF or reducing the number of levels.');
             }
 
-            schoolDropdownButton.addEventListener('click', toggleSchoolDropdown);
-            schoolForm.addEventListener('submit', handleSchoolFormSubmit);
+            window.requestAnimationFrame(() => {
+                window.print();
+                const table = document.getElementById('scheduleTable');
+                table.classList.remove('wide-table');
+            });
+        } catch (error) {
+            console.error('Error preparing schedule for print:', error);
+            alert('Error preparing schedule for print: ' + error.message);
+        }
+    }
 
-            // Search Filter
-            const searchFilter = document.getElementById('searchFilter');
-            if (!searchFilter) {
-                console.error('Search filter input not found.');
-                alert('Error: Search filter input not found. Please check the page.');
+    function saveToGallery() {
+        console.log('saveToGallery called');
+        if (typeof html2canvas === 'undefined') {
+            console.error('html2canvas library not loaded.');
+            alert('Error: Image capture library failed to load. Please check your internet connection and try again.');
+            return;
+        }
+        try {
+            const table = document.getElementById('scheduleTable');
+            if (!table) {
+                console.error('Schedule table not found.');
+                alert('Error: Schedule table not found.');
                 return;
             }
-            searchFilter.addEventListener('input', () => {
-                console.log('searchFilter input event');
-                filterTable();
+            html2canvas(table, {
+                scale: 2,
+                useCORS: true,
+                width: table.scrollWidth,
+                windowWidth: table.scrollWidth
+            }).then(canvas => {
+                const link = document.createElement('a');
+                link.href = canvas.toDataURL('image/png');
+                link.download = 'schedule.png';
+                link.click();
+                console.log('Image saved successfully.');
+            }).catch(error => {
+                console.error('Error capturing table as image:', error);
+                alert('Error capturing table as image: ' + error.message);
             });
+        } catch (error) {
+            console.error('Error saving to gallery:', error);
+            alert('Error saving to gallery: ' + error.message);
+        }
+    }
 
-            // Teacher Dropdown
-            const teacherDropdownButton = document.getElementById('teacherDropdown');
-            const addNewTeacherItem = document.getElementById('addNewTeacher');
-            const deleteTeacherItem = document.getElementById('deleteTeacher');
-            const deleteTeacherSelect = document.getElementById('deleteTeacherSelect');
+    // Notice Modal Logic
+    function handleNoticeModal() {
+        console.log('handleNoticeModal called');
+        const modal = document.getElementById('noticeModal');
+        const proceedButton = document.getElementById('proceedButton');
+        const checkboxes = document.querySelectorAll('.instruction-checkbox');
 
-            if (!teacherDropdownButton || !addNewTeacherItem || !deleteTeacherItem || !deleteTeacherSelect) {
-                console.error('Teacher dropdown elements not found:', {
-                    teacherDropdownButton: !!teacherDropdownButton,
-                    addNewTeacherItem: !!addNewTeacherItem,
-                    deleteTeacherItem: !!deleteTeacherItem,
-                    deleteTeacherSelect: !!deleteTeacherSelect
-                });
-                alert('Error: Teacher dropdown elements not found. Please check the page.');
-                return;
-            }
+        // Show modal on page load
+        modal.classList.add('show');
 
-            teacherDropdownButton.addEventListener('click', toggleTeacherDropdown);
-            addNewTeacherItem.addEventListener('click', addNewTeacher);
-            deleteTeacherItem.addEventListener('click', (event) => {
-                event.stopPropagation();
-                console.log('deleteTeacherItem clicked');
-                deleteTeacherSelect.style.display = 'block';
-                document.getElementById('teacherDropdownMenu').classList.remove('show');
-            });
-            deleteTeacherSelect.addEventListener('change', deleteTeacher);
+        // Function to check if all checkboxes are checked
+        function checkAllCheckboxes() {
+            const allChecked = Array.from(checkboxes).every(checkbox => checkbox.checked);
+            proceedButton.disabled = !allChecked;
+        }
 
-            // Day Dropdown
-            const dayDropdownButton = document.getElementById('dayDropdown');
-            const addNewDayItem = document.getElementById('addNewDay');
-            const deleteDayItem = document.getElementById('deleteDay');
-            const deleteDaySelect = document.getElementById('deleteDaySelect');
-
-            if (!dayDropdownButton || !addNewDayItem || !deleteDayItem || !deleteDaySelect) {
-                console.error('Day dropdown elements not found:', {
-                    dayDropdownButton: !!dayDropdownButton,
-                    addNewDayItem: !!addNewDayItem,
-                    deleteDayItem: !!deleteDayItem,
-                    deleteDaySelect: !!deleteDaySelect
-                });
-                alert('Error: Day dropdown elements not found. Please check the page.');
-                return;
-            }
-
-            dayDropdownButton.addEventListener('click', toggleDayDropdown);
-            addNewDayItem.addEventListener('click', addNewDay);
-            deleteDayItem.addEventListener('click', (event) => {
-                event.stopPropagation();
-                console.log('deleteDayItem clicked');
-                deleteDaySelect.style.display = 'block';
-                document.getElementById('dayDropdownMenu').classList.remove('show');
-            });
-            deleteDaySelect.addEventListener('change', deleteDay);
-
-            // Time Dropdown
-            const timeDropdownButton = document.getElementById('timeDropdown');
-            const addNewTimeItem = document.getElementById('addNewTime');
-            const deleteTimeItem = document.getElementById('deleteTime');
-            const deleteTimeSelect = document.getElementById('deleteTimeSelect');
-
-            if (!timeDropdownButton || !addNewTimeItem || !deleteTimeItem || !deleteTimeSelect) {
-                console.error('Time dropdown elements not found:', {
-                    timeDropdownButton: !!timeDropdownButton,
-                    addNewTimeItem: !!addNewTimeItem,
-                    deleteTimeItem: !!deleteTimeItem,
-                    deleteTimeSelect: !!deleteTimeSelect
-                });
-                alert('Error: Time dropdown elements not found. Please check the page.');
-                return;
-            }
-
-            timeDropdownButton.addEventListener('click', toggleTimeDropdown);
-            addNewTimeItem.addEventListener('click', addNewTime);
-            deleteTimeItem.addEventListener('click', (event) => {
-                event.stopPropagation();
-                console.log('deleteTimeItem clicked');
-                deleteTimeSelect.style.display = 'block';
-                document.getElementById('timeDropdownMenu').classList.remove('show');
-            });
-            deleteTimeSelect.addEventListener('change', deleteTime);
-
-            // Level Dropdown
-            const levelDropdownButton = document.getElementById('levelDropdown');
-            const addNewLevelItem = document.getElementById('addNewLevel');
-            const deleteLevelItem = document.getElementById('deleteLevel');
-            const deleteLevelSelect = document.getElementById('deleteLevelSelect');
-
-            if (!levelDropdownButton || !addNewLevelItem || !deleteLevelItem || !deleteLevelSelect) {
-                console.error('Level dropdown elements not found:', {
-                    levelDropdownButton: !!levelDropdownButton,
-                    addNewLevelItem: !!addNewLevelItem,
-                    deleteLevelItem: !!deleteLevelItem,
-                    deleteLevelSelect: !!deleteLevelSelect
-                });
-                alert('Error: Level dropdown elements not found. Please check the page.');
-                return;
-            }
-
-            levelDropdownButton.addEventListener('click', toggleLevelDropdown);
-            addNewLevelItem.addEventListener('click', addNewLevel);
-            deleteLevelItem.addEventListener('click', (event) => {
-                event.stopPropagation();
-                console.log('deleteLevelItem clicked');
-                deleteLevelSelect.style.display = 'block';
-                document.getElementById('levelDropdownMenu').classList.remove('show');
-            });
-            deleteLevelSelect.addEventListener('change', deleteLevel);
-
-            // Subject Dropdown
-            const subjectDropdownButton = document.getElementById('subjectDropdown');
-            const addNewSubjectItem = document.getElementById('addNewSubject');
-            const deleteSubjectItem = document.getElementById('deleteSubject');
-            const deleteSubjectSelect = document.getElementById('deleteSubjectSelect');
-
-            if (!subjectDropdownButton || !addNewSubjectItem || !deleteSubjectItem || !deleteSubjectSelect) {
-                console.error('Subject dropdown elements not found:', {
-                    subjectDropdownButton: !!subjectDropdownButton,
-                    addNewSubjectItem: !!addNewSubjectItem,
-                    deleteSubjectItem: !!deleteSubjectItem,
-                    deleteSubjectSelect: !!deleteSubjectSelect
-                });
-                alert('Error: Subject dropdown elements not found. Please check the page.');
-                return;
-            }
-
-            subjectDropdownButton.addEventListener('click', toggleSubjectDropdown);
-            addNewSubjectItem.addEventListener('click', addNewSubject);
-            deleteSubjectItem.addEventListener('click', (event) => {
-                event.stopPropagation();
-                console.log('deleteSubjectItem clicked');
-                deleteSubjectSelect.style.display = 'block';
-                document.getElementById('subjectDropdownMenu').classList.remove('show');
-            });
-            deleteSubjectSelect.addEventListener('change', deleteSubject);
-
-            // Main Buttons
-            const addTeacherButton = document.getElementById('addTeacherButton');
-            const saveToGalleryButton = document.getElementById('saveToGallery');
-            const saveScheduleButton = document.getElementById('saveSchedule');
-            const editScheduleButton = document.getElementById('editSchedule');
-            const printScheduleButton = document.getElementById('printSchedule');
-            const createNewScheduleButton = document.getElementById('createNewSchedule');
-            const loadSelectedScheduleButton = document.getElementById('loadSelectedSchedule');
-            const deleteSelectedScheduleButton = document.getElementById('deleteSelectedSchedule');
-            const cancelLoadScheduleButton = document.getElementById('cancelLoadSchedule');
-
-            if (!addTeacherButton || !saveToGalleryButton || !saveScheduleButton || !editScheduleButton || 
-                !printScheduleButton || !createNewScheduleButton || !loadSelectedScheduleButton || 
-                !deleteSelectedScheduleButton || !cancelLoadScheduleButton) {
-                console.error('Main buttons not found:', {
-                    addTeacherButton: !!addTeacherButton,
-                    saveToGalleryButton: !!saveToGalleryButton,
-                    saveScheduleButton: !!saveScheduleButton,
-                    editScheduleButton: !!editScheduleButton,
-                    printScheduleButton: !!printScheduleButton,
-                    createNewScheduleButton: !!createNewScheduleButton,
-                    loadSelectedScheduleButton: !!loadSelectedScheduleButton,
-                    deleteSelectedScheduleButton: !!deleteSelectedScheduleButton,
-                    cancelLoadScheduleButton: !!cancelLoadScheduleButton
-                });
-                alert('Error: One or more main buttons not found. Please check the page.');
-                return;
-            }
-
-            addTeacherButton.addEventListener('click', () => {
-                console.log('addTeacherButton click event');
-                addTeacher();
-            });
-            saveToGalleryButton.addEventListener('click', () => {
-                console.log('saveToGalleryButton click event');
-                saveToGallery();
-            });
-            saveScheduleButton.addEventListener('click', () => {
-                console.log('saveScheduleButton click event');
-                saveSchedule();
-            });
-            editScheduleButton.addEventListener('click', () => {
-                console.log('editScheduleButton click event');
-                showLoadScheduleModal();
-            });
-            printScheduleButton.addEventListener('click', () => {
-                console.log('printScheduleButton click event');
-                printSchedule();
-            });
-            createNewScheduleButton.addEventListener('click', () => {
-                console.log('createNewScheduleButton click event');
-                createNewSchedule();
-            });
-            loadSelectedScheduleButton.addEventListener('click', () => {
-                console.log('loadSelectedScheduleButton click event');
-                const select = document.getElementById('savedSchedulesSelect');
-                const index = parseInt(select.value);
-                if (!isNaN(index)) {
-                    loadSchedule(index);
-                    document.getElementById('loadScheduleModal').classList.remove('show');
-                } else {
-                    alert('Please select a schedule to load.');
-                }
-            });
-            deleteSelectedScheduleButton.addEventListener('click', () => {
-                console.log('deleteSelectedScheduleButton click event');
-                deleteSchedule();
-            });
-            cancelLoadScheduleButton.addEventListener('click', () => {
-                console.log('cancelLoadScheduleButton click event');
-                document.getElementById('loadScheduleModal').classList.remove('show');
-            });
-
-            // Close all dropdowns and modals when clicking outside
-            document.addEventListener('click', function(event) {
-                console.log('Global click event');
-                const dropdowns = [
-                    { button: schoolDropdownButton, menu: document.getElementById('schoolDropdownMenu'), select: null },
-                    { button: teacherDropdownButton, menu: document.getElementById('teacherDropdownMenu'), select: deleteTeacherSelect },
-                    { button: dayDropdownButton, menu: document.getElementById('dayDropdownMenu'), select: deleteDaySelect },
-                    { button: timeDropdownButton, menu: document.getElementById('timeDropdownMenu'), select: deleteTimeSelect },
-                    { button: levelDropdownButton, menu: document.getElementById('levelDropdownMenu'), select: deleteLevelSelect },
-                    { button: subjectDropdownButton, menu: document.getElementById('subjectDropdownMenu'), select: deleteSubjectSelect }
-                ];
-
-                dropdowns.forEach(({ button, menu, select }) => {
-                    if (!button.contains(event.target) && !menu.contains(event.target) && (!select || !select.contains(event.target))) {
-                        menu.classList.remove('show');
-                        if (select) select.style.display = 'none';
-                    }
-                });
-
-                const loadScheduleModal = document.getElementById('loadScheduleModal');
-                if (!loadScheduleModal.contains(event.target) && !editScheduleButton.contains(event.target)) {
-                    loadScheduleModal.classList.remove('show');
-                }
+        // Add event listeners to checkboxes
+        checkboxes.forEach(checkbox => {
+            checkbox.addEventListener('change', () => {
+                console.log(`Checkbox ${checkbox.id} changed to ${checkbox.checked}`);
+                checkAllCheckboxes();
             });
         });
-    </script>
+
+        // Handle Proceed button click
+        proceedButton.addEventListener('click', () => {
+            if (!proceedButton.disabled) {
+                console.log('Proceed button clicked');
+                modal.classList.remove('show');
+            }
+        });
+    }
+
+    document.addEventListener('DOMContentLoaded', function() {
+    console.log('DOMContentLoaded fired');
+    // Initialize notice modal
+    handleNoticeModal();
+
+    // Initial UI updates
+    updateTeacherDropdown();
+    updateDayDropdown();
+    updateTimeDropdown();
+    updateLevelDropdown();
+    updateTableHeaders();
+    updateTable();
+    updateSchoolHeader();
+
+    // School Dropdown
+    const schoolDropdownButton = document.getElementById('schoolDropdown');
+    const schoolForm = document.getElementById('schoolForm');
+
+    if (!schoolDropdownButton || !schoolForm) {
+        console.error('School dropdown elements not found:', {
+            schoolDropdownButton: !!schoolDropdownButton,
+            schoolForm: !!schoolForm
+        });
+        alert('Error: School dropdown elements not found. Please check the page.');
+        return;
+    }
+
+    schoolDropdownButton.addEventListener('click', toggleSchoolDropdown);
+    schoolForm.addEventListener('submit', handleSchoolFormSubmit);
+
+    // Search Filter
+    const searchFilter = document.getElementById('searchFilter');
+    if (!searchFilter) {
+        console.error('Search filter input not found.');
+        alert('Error: Search filter input not found. Please check the page.');
+        return;
+    }
+    searchFilter.addEventListener('input', () => {
+        console.log('searchFilter input event');
+        filterTable();
+    });
+
+    // Teacher Dropdown
+    const teacherDropdownButton = document.getElementById('teacherDropdown');
+    const addNewTeacherItem = document.getElementById('addNewTeacher');
+    const addBulkTeachersItem = document.getElementById('addBulkTeachers');
+    const deleteTeacherItem = document.getElementById('deleteTeacher');
+    const deleteTeacherSelect = document.getElementById('deleteTeacherSelect');
+
+    if (!teacherDropdownButton || !addNewTeacherItem || !addBulkTeachersItem || !deleteTeacherItem || !deleteTeacherSelect) {
+        console.error('Teacher dropdown elements not found:', {
+            teacherDropdownButton: !!teacherDropdownButton,
+            addNewTeacherItem: !!addNewTeacherItem,
+            addBulkTeachersItem: !!addBulkTeachersItem,
+            deleteTeacherItem: !!deleteTeacherItem,
+            deleteTeacherSelect: !!deleteTeacherSelect
+        });
+        alert('Error: Teacher dropdown elements not found. Please check the page.');
+        return;
+    }
+
+    teacherDropdownButton.addEventListener('click', toggleTeacherDropdown);
+    addNewTeacherItem.addEventListener('click', addNewTeacher);
+    addBulkTeachersItem.addEventListener('click', addBulkTeachers);
+    deleteTeacherItem.addEventListener('click', (event) => {
+        event.stopPropagation();
+        console.log('deleteTeacherItem clicked');
+        deleteTeacherSelect.style.display = 'block';
+        document.getElementById('teacherDropdownMenu').classList.remove('show');
+    });
+    deleteTeacherSelect.addEventListener('change', deleteTeacher);
+
+    // Day Dropdown
+    const dayDropdownButton = document.getElementById('dayDropdown');
+    const addNewDayItem = document.getElementById('addNewDay');
+    const addBulkDaysItem = document.getElementById('addBulkDays');
+    const deleteDayItem = document.getElementById('deleteDay');
+    const deleteDaySelect = document.getElementById('deleteDaySelect');
+
+    if (!dayDropdownButton || !addNewDayItem || !addBulkDaysItem || !deleteDayItem || !deleteDaySelect) {
+        console.error('Day dropdown elements not found:', {
+            dayDropdownButton: !!dayDropdownButton,
+            addNewDayItem: !!addNewDayItem,
+            addBulkDaysItem: !!addBulkDaysItem,
+            deleteDayItem: !!deleteDayItem,
+            deleteDaySelect: !!deleteDaySelect
+        });
+        alert('Error: Day dropdown elements not found. Please check the page.');
+        return;
+    }
+
+    dayDropdownButton.addEventListener('click', toggleDayDropdown);
+    addNewDayItem.addEventListener('click', addNewDay);
+    addBulkDaysItem.addEventListener('click', addBulkDays);
+    deleteDayItem.addEventListener('click', (event) => {
+        event.stopPropagation();
+        console.log('deleteDayItem clicked');
+        deleteDaySelect.style.display = 'block';
+        document.getElementById('dayDropdownMenu').classList.remove('show');
+    });
+    deleteDaySelect.addEventListener('change', deleteDay);
+
+    // Time Dropdown
+    const timeDropdownButton = document.getElementById('timeDropdown');
+    const addNewTimeItem = document.getElementById('addNewTime');
+    const addBulkTimesItem = document.getElementById('addBulkTimes');
+    const deleteTimeItem = document.getElementById('deleteTime');
+    const deleteTimeSelect = document.getElementById('deleteTimeSelect');
+
+    if (!timeDropdownButton || !addNewTimeItem || !addBulkTimesItem || !deleteTimeItem || !deleteTimeSelect) {
+        console.error('Time dropdown elements not found:', {
+            timeDropdownButton: !!timeDropdownButton,
+            addNewTimeItem: !!addNewTimeItem,
+            addBulkTimesItem: !!addBulkTimesItem,
+            deleteTimeItem: !!deleteTimeItem,
+            deleteTimeSelect: !!deleteTimeSelect
+        });
+        alert('Error: Time dropdown elements not found. Please check the page.');
+        return;
+    }
+
+    timeDropdownButton.addEventListener('click', toggleTimeDropdown);
+    addNewTimeItem.addEventListener('click', addNewTime);
+    addBulkTimesItem.addEventListener('click', addBulkTimes);
+    deleteTimeItem.addEventListener('click', (event) => {
+        event.stopPropagation();
+        console.log('deleteTimeItem clicked');
+        deleteTimeSelect.style.display = 'block';
+        document.getElementById('timeDropdownMenu').classList.remove('show');
+    });
+    deleteTimeSelect.addEventListener('change', deleteTime);
+
+    // Level Dropdown
+    const levelDropdownButton = document.getElementById('levelDropdown');
+    const addNewLevelItem = document.getElementById('addNewLevel');
+    const addBulkLevelsItem = document.getElementById('addBulkLevels');
+    const deleteLevelItem = document.getElementById('deleteLevel');
+    const deleteLevelSelect = document.getElementById('deleteLevelSelect');
+
+    if (!levelDropdownButton || !addNewLevelItem || !addBulkLevelsItem || !deleteLevelItem || !deleteLevelSelect) {
+        console.error('Level dropdown elements not found:', {
+            levelDropdownButton: !!levelDropdownButton,
+            addNewLevelItem: !!addNewLevelItem,
+            addBulkLevelsItem: !!addBulkLevelsItem,
+            deleteLevelItem: !!deleteLevelItem,
+            deleteLevelSelect: !!deleteLevelSelect
+        });
+        alert('Error: Level dropdown elements not found. Please check the page.');
+        return;
+    }
+
+    levelDropdownButton.addEventListener('click', toggleLevelDropdown);
+    addNewLevelItem.addEventListener('click', addNewLevel);
+    addBulkLevelsItem.addEventListener('click', addBulkLevels);
+    deleteLevelItem.addEventListener('click', (event) => {
+        event.stopPropagation();
+        console.log('deleteLevelItem clicked');
+        deleteLevelSelect.style.display = 'block';
+        document.getElementById('levelDropdownMenu').classList.remove('show');
+    });
+    deleteLevelSelect.addEventListener('change', deleteLevel);
+
+    // Subject Dropdown
+    const subjectDropdownButton = document.getElementById('subjectDropdown');
+    const addNewSubjectItem = document.getElementById('addNewSubject');
+    const addBulkSubjectsItem = document.getElementById('addBulkSubjects');
+    const deleteSubjectItem = document.getElementById('deleteSubject');
+    const deleteSubjectSelect = document.getElementById('deleteSubjectSelect');
+
+    if (!subjectDropdownButton || !addNewSubjectItem || !addBulkSubjectsItem || !deleteSubjectItem || !deleteSubjectSelect) {
+        console.error('Subject dropdown elements not found:', {
+            subjectDropdownButton: !!subjectDropdownButton,
+            addNewSubjectItem: !!addNewSubjectItem,
+            addBulkSubjectsItem: !!addBulkSubjectsItem,
+            deleteSubjectItem: !!deleteSubjectItem,
+            deleteSubjectSelect: !!deleteSubjectSelect
+        });
+        alert('Error: Subject dropdown elements not found. Please check the page.');
+        return;
+    }
+
+    subjectDropdownButton.addEventListener('click', toggleSubjectDropdown);
+    addNewSubjectItem.addEventListener('click', addNewSubject);
+    addBulkSubjectsItem.addEventListener('click', addBulkSubjects);
+    deleteSubjectItem.addEventListener('click', (event) => {
+        event.stopPropagation();
+        console.log('deleteSubjectItem clicked');
+        deleteSubjectSelect.style.display = 'block';
+        document.getElementById('subjectDropdownMenu').classList.remove('show');
+    });
+    deleteSubjectSelect.addEventListener('change', deleteSubject);
+
+    // Add Schedule Entry Button
+    const addTeacherButton = document.getElementById('addTeacherButton');
+    if (!addTeacherButton) {
+        console.error('Add teacher button not found.');
+        alert('Error: Add teacher button not found. Please check the page.');
+        return;
+    }
+    addTeacherButton.addEventListener('click', addTeacher);
+
+    // Save to Gallery Button
+    const saveToGalleryButton = document.getElementById('saveToGallery');
+    if (!saveToGalleryButton) {
+        console.error('Save to gallery button not found.');
+        alert('Error: Save to gallery button not found. Please check the page.');
+        return;
+    }
+    saveToGalleryButton.addEventListener('click', saveToGallery);
+
+    // Save Schedule Button
+    const saveScheduleButton = document.getElementById('saveSchedule');
+    if (!saveScheduleButton) {
+        console.error('Save schedule button not found.');
+        alert('Error: Save schedule button not found. Please check the page.');
+        return;
+    }
+    saveScheduleButton.addEventListener('click', saveSchedule);
+
+    // Load Schedule Button
+    const editScheduleButton = document.getElementById('editSchedule');
+    if (!editScheduleButton) {
+        console.error('Edit schedule button not found.');
+        alert('Error: Edit schedule button not found. Please check the page.');
+        return;
+    }
+    editScheduleButton.addEventListener('click', showLoadScheduleModal);
+
+    // Print Schedule Button
+    const printScheduleButton = document.getElementById('printSchedule');
+    if (!printScheduleButton) {
+        console.error('Print schedule button not found.');
+        alert('Error: Print schedule button not found. Please check the page.');
+        return;
+    }
+    printScheduleButton.addEventListener('click', printSchedule);
+
+    // Create New Schedule Button
+    const createNewScheduleButton = document.getElementById('createNewSchedule');
+    if (!createNewScheduleButton) {
+        console.error('Create new schedule button not found.');
+        alert('Error: Create new schedule button not found. Please check the page.');
+        return;
+    }
+    createNewScheduleButton.addEventListener('click', createNewSchedule);
+
+    // Load Schedule Modal Buttons
+    const loadSelectedScheduleButton = document.getElementById('loadSelectedSchedule');
+    const deleteSelectedScheduleButton = document.getElementById('deleteSelectedSchedule');
+    const cancelLoadScheduleButton = document.getElementById('cancelLoadSchedule');
+    const savedSchedulesSelect = document.getElementById('savedSchedulesSelect');
+
+    if (!loadSelectedScheduleButton || !deleteSelectedScheduleButton || !cancelLoadScheduleButton || !savedSchedulesSelect) {
+        console.error('Load schedule modal elements not found:', {
+            loadSelectedScheduleButton: !!loadSelectedScheduleButton,
+            deleteSelectedScheduleButton: !!deleteSelectedScheduleButton,
+            cancelLoadScheduleButton: !!cancelLoadScheduleButton,
+            savedSchedulesSelect: !!savedSchedulesSelect
+        });
+        alert('Error: Load schedule modal elements not found. Please check the page.');
+        return;
+    }
+
+    loadSelectedScheduleButton.addEventListener('click', () => {
+        const index = parseInt(savedSchedulesSelect.value);
+        if (!isNaN(index)) {
+            loadSchedule(index);
+            document.getElementById('loadScheduleModal').classList.remove('show');
+        } else {
+            alert('Please select a schedule to load.');
+        }
+    });
+
+    deleteSelectedScheduleButton.addEventListener('click', deleteSchedule);
+
+    cancelLoadScheduleButton.addEventListener('click', () => {
+        console.log('Cancel load schedule clicked');
+        document.getElementById('loadScheduleModal').classList.remove('show');
+    });
+
+    // Close dropdowns and delete selects when clicking outside
+    document.addEventListener('click', (event) => {
+        if (event.target.classList.contains('dropdown-item')) {
+            return;
+        }
+        if (!event.target.closest('.dropdown') && !event.target.matches('select[id$="Select"]')) {
+            document.querySelectorAll('.dropdown-menu').forEach(menu => {
+                menu.classList.remove('show');
+            });
+            document.querySelectorAll('select[id$="Select"]').forEach(select => {
+                select.style.display = 'none';
+            });
+        }
+    });
+});
+</script>
 </body>
 </html>
